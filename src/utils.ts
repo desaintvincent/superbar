@@ -9,6 +9,7 @@ export interface SuperBarConfig {
   showBookmarkPath?: boolean;
   excludedFolders?: string[][];
   ignoredBookmarks?: string[];
+  bookmarkUsage?: { [url: string]: number };
 }
 
 export const DEFAULT_CONFIG: SuperBarConfig = {
@@ -18,6 +19,7 @@ export const DEFAULT_CONFIG: SuperBarConfig = {
   showBookmarkPath: true,
   excludedFolders: [],
   ignoredBookmarks: [],
+  bookmarkUsage: {},
 };
 
 export async function getConfig(): Promise<SuperBarConfig> {
@@ -71,6 +73,24 @@ export function parseShortcut(shortcut: string) {
     meta: keys.includes('Meta'),
     key: keys[keys.length - 1],
   };
+}
+
+/**
+ * Calculate weight for sorting bookmarks
+ * Can accept multiple parameters for future expansion
+ */
+export function calculateBookmarkWeight(params: {
+  relevance: number;
+  usageCount?: number;
+}): number {
+  const { relevance, usageCount = 0 } = params;
+
+  // Relevance: 0-1000 scale (search match quality)
+  // Usage count: logarithmic scale to avoid dominance (log2 for diminishing returns)
+  const usageWeight = usageCount > 0 ? Math.log2(usageCount + 1) * 100 : 0;
+
+  // Combined weight: 70% relevance, 30% usage
+  return relevance * 0.7 + usageWeight * 0.3;
 }
 
 /**

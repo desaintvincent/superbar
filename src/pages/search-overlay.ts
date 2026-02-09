@@ -116,6 +116,8 @@
         const isSelected = index === selectedIndex;
         const faviconUrl = `https://www.google.com/s2/favicons?sz=16&domain=${new URL(result.url).hostname}`;
         const pathHtml = result.path ? `<div class="superbar-result-path">${escapeHtml(result.path)}</div>` : '';
+        const usageCount = (result as any).usageCount || 0;
+        const usageHtml = usageCount > 0 ? `<div class="superbar-result-usage">${usageCount}×</div>` : '';
         return `
           <div class="superbar-result ${isSelected ? 'selected' : ''}" data-index="${index}">
             <div class="superbar-result-content">
@@ -125,6 +127,7 @@
                 ${pathHtml}
                 <div class="superbar-result-url">${escapeHtml(new URL(result.url).hostname)}</div>
               </div>
+              ${usageHtml}
               <div class="superbar-result-actions">
                 <button class="superbar-action-btn" data-index="${index}" title="More actions">⋮</button>
                 <div class="superbar-action-menu" data-index="${index}" style="display: none;">

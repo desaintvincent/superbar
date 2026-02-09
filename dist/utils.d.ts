@@ -8,6 +8,9 @@ export interface SuperBarConfig {
     showBookmarkPath?: boolean;
     excludedFolders?: string[][];
     ignoredBookmarks?: string[];
+    bookmarkUsage?: {
+        [url: string]: number;
+    };
 }
 export declare const DEFAULT_CONFIG: SuperBarConfig;
 export declare function getConfig(): Promise<SuperBarConfig>;
@@ -23,6 +26,14 @@ export declare function parseShortcut(shortcut: string): {
     meta: boolean;
     key: string;
 };
+/**
+ * Calculate weight for sorting bookmarks
+ * Can accept multiple parameters for future expansion
+ */
+export declare function calculateBookmarkWeight(params: {
+    relevance: number;
+    usageCount?: number;
+}): number;
 /**
  * Get the operating system
  */

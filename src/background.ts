@@ -118,7 +118,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     case 'OPEN_BOOKMARK':
       if (message.payload?.url) {
+        console.log('[SuperBar Background] OPEN_BOOKMARK received for:', message.payload.url);
+        // Track bookmark usage
+        trackBookmarkUsage(message.payload.url);
+
         chrome.tabs.create({ url: message.payload.url }, () => {
+          console.log('[SuperBar Background] Tab created for:', message.payload.url);
           sendResponse({ success: true });
         });
       } else {
@@ -168,6 +173,21 @@ function isPathInFolder(bookmarkPath: string[], excludedPath: string[]): boolean
   }
 
   return true;
+}
+
+// Calculate weight for sorting bookmarks
+function calculateBookmarkWeight(params: {
+  relevance: number;
+  usageCount?: number;
+}): number {
+  const { relevance, usageCount = 0 } = params;
+
+  // Relevance: 0-1000 scale (search match quality)
+  // Usage count: logarithmic scale to avoid dominance (log2 for diminishing returns)
+  const usageWeight = usageCount > 0 ? Math.log2(usageCount + 1) * 100 : 0;
+
+  // Combined weight: 70% relevance, 30% usage
+  return relevance * 0.7 + usageWeight * 0.3;
 }
 
 // Migrate old config format to new format
@@ -258,16 +278,23 @@ function searchBookmarks(query: string, callback: (results: any[]) => void) {
             // Always include bookmarks with URLs
             return true;
           })
-          .map((bookmark) => ({
-            title: bookmark.title || 'Untitled',
-            url: bookmark.url,
-            id: bookmark.id,
-            parentId: bookmark.parentId,
-            relevance: calculateRelevance(query, bookmark.title || ''),
-          }))
-          .sort((a, b) => b.relevance - a.relevance);
+          .map((bookmark) => {
+            const relevance = calculateRelevance(query, bookmark.title || '');
+            const bookmarkUsage = config.bookmarkUsage || {};
+            const usageCount = bookmark.url ? ((bookmarkUsage[bookmark.url] || 0) as number) : 0;
+            const weight = calculateBookmarkWeight({ relevance, usageCount });
 
-        console.log('[SuperBar Background] Filtered results count:', bookmarks.length);
+            return {
+              title: bookmark.title || 'Untitled',
+              url: bookmark.url,
+              id: bookmark.id,
+              parentId: bookmark.parentId,
+              relevance,
+              usageCount,
+              weight,
+            };
+          })
+          .sort((a, b) => b.weight - a.weight);
 
         // Get paths for bookmarks
         getBookmarkPaths(bookmarks, (bookmarksWithPaths) => {
@@ -344,6 +371,22 @@ function notifyAllTabs(config: any) {
           // Tab might not have content script loaded, ignore error
         });
       }
+    });
+  });
+}
+
+// Track bookmark usage
+function trackBookmarkUsage(url: string) {
+  console.log('[SuperBar] Tracking usage for:', url);
+  chrome.storage.local.get(['superbarConfig'], (result) => {
+    const config = result.superbarConfig || {};
+    const bookmarkUsage = config.bookmarkUsage || {};
+
+    bookmarkUsage[url] = (bookmarkUsage[url] || 0) + 1;
+    config.bookmarkUsage = bookmarkUsage;
+
+    chrome.storage.local.set({ superbarConfig: config }, () => {
+      console.log('[SuperBar] Bookmark usage updated:', url, 'count:', bookmarkUsage[url]);
     });
   });
 }
