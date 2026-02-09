@@ -7,12 +7,14 @@
   interface SuperBarConfig {
     shortcut: string;
     enabled: boolean;
+    showBookmarkPath?: boolean;
   }
 
   interface BookmarkResult {
     title: string;
     url: string;
     relevance: number;
+    path?: string;
   }
 
   let config: SuperBarConfig = {
@@ -220,12 +222,15 @@
       .map((result, index) => {
         const isSelected = index === selectedIndex;
         const faviconUrl = `https://www.google.com/s2/favicons?sz=16&domain=${new URL(result.url).hostname}`;
+        const showPath = config.showBookmarkPath !== false;
+        const pathHtml = showPath && result.path ? `<div class="superbar-result-path">${escapeHtml(result.path)}</div>` : '';
         return `
           <div class="superbar-result ${isSelected ? 'selected' : ''}" data-index="${index}">
             <div class="superbar-result-content">
               <img src="${faviconUrl}" alt="" class="superbar-favicon" onerror="this.style.display='none'" />
               <div class="superbar-result-text">
                 <div class="superbar-result-title">${escapeHtml(result.title)}</div>
+                ${pathHtml}
                 <div class="superbar-result-url">${escapeHtml(new URL(result.url).hostname)}</div>
               </div>
             </div>
@@ -433,6 +438,17 @@
         white-space: nowrap !important;
         overflow: hidden !important;
         text-overflow: ellipsis !important;
+      }
+
+      .superbar-result-path {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+        font-size: 11px !important;
+        color: #4b5563 !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        margin-top: 1px !important;
+        margin-bottom: 2px !important;
       }
 
       .superbar-result-url {

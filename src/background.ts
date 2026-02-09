@@ -140,11 +140,46 @@ function searchBookmarks(query: string, callback: (results: any[]) => void) {
       .map((bookmark) => ({
         title: bookmark.title || 'Untitled',
         url: bookmark.url,
+        id: bookmark.id,
+        parentId: bookmark.parentId,
         relevance: calculateRelevance(query, bookmark.title || ''),
       }))
       .sort((a, b) => b.relevance - a.relevance);
 
-    callback(bookmarks);
+    // Get paths for bookmarks
+    getBookmarkPaths(bookmarks, (bookmarksWithPaths) => {
+      callback(bookmarksWithPaths);
+    });
+  });
+}
+
+// Get folder paths for bookmarks
+function getBookmarkPaths(bookmarks: any[], callback: (bookmarks: any[]) => void) {
+  const pathMap: { [key: string]: string } = {};
+
+  // Get all bookmark tree to build path map
+  chrome.bookmarks.getTree((bookmarkTreeNodes) => {
+    // Build a map of ID -> path
+    function buildPathMap(nodes: any[], currentPath: string = '') {
+      nodes.forEach((node) => {
+        const nodePath = currentPath ? `${currentPath}/${node.title}` : node.title;
+        pathMap[node.id] = nodePath;
+
+        if (node.children) {
+          buildPathMap(node.children, nodePath);
+        }
+      });
+    }
+
+    buildPathMap(bookmarkTreeNodes);
+
+    // Add path to each bookmark
+    const bookmarksWithPaths = bookmarks.map((bookmark) => ({
+      ...bookmark,
+      path: pathMap[bookmark.parentId] || '',
+    }));
+
+    callback(bookmarksWithPaths);
   });
 }
 

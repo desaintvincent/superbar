@@ -6,12 +6,14 @@ export interface SuperBarConfig {
   shortcut: string;
   enabled: boolean;
   searchEngines: string[];
+  showBookmarkPath?: boolean;
 }
 
 export const DEFAULT_CONFIG: SuperBarConfig = {
   shortcut: 'Ctrl+Shift+K',
   enabled: true,
   searchEngines: ['google'],
+  showBookmarkPath: true,
 };
 
 export async function getConfig(): Promise<SuperBarConfig> {

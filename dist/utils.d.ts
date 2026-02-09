@@ -5,6 +5,7 @@ export interface SuperBarConfig {
     shortcut: string;
     enabled: boolean;
     searchEngines: string[];
+    showBookmarkPath?: boolean;
 }
 export declare const DEFAULT_CONFIG: SuperBarConfig;
 export declare function getConfig(): Promise<SuperBarConfig>;

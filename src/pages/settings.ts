@@ -10,11 +10,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Set form values
   const enabledCheckbox = document.getElementById('enabled') as HTMLInputElement;
   const shortcutInput = document.getElementById('shortcut') as HTMLInputElement;
+  const showPathCheckbox = document.getElementById('show-path') as HTMLInputElement;
   const searchEngineCheckboxes = document.querySelectorAll(
     'input[name="searchEngine"]'
   ) as NodeListOf<HTMLInputElement>;
   enabledCheckbox.checked = config.enabled;
   shortcutInput.value = config.shortcut;
+  showPathCheckbox.checked = config.showBookmarkPath !== false;
   searchEngineCheckboxes.forEach((checkbox) => {
     checkbox.checked = config.searchEngines.includes(checkbox.value);
   });
@@ -33,6 +35,7 @@ async function handleSave(e: Event) {
   e.preventDefault();
   const enabledCheckbox = document.getElementById('enabled') as HTMLInputElement;
   const shortcutInput = document.getElementById('shortcut') as HTMLInputElement;
+  const showPathCheckbox = document.getElementById('show-path') as HTMLInputElement;
   const searchEngineCheckboxes = document.querySelectorAll(
     'input[name="searchEngine"]:checked'
   ) as NodeListOf<HTMLInputElement>;
@@ -45,6 +48,7 @@ async function handleSave(e: Event) {
     shortcut: shortcutInput.value,
     enabled: enabledCheckbox.checked,
     searchEngines,
+    showBookmarkPath: showPathCheckbox.checked,
   };
   try {
     await saveConfig(config);
