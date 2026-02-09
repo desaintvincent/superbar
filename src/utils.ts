@@ -7,6 +7,8 @@ export interface SuperBarConfig {
   enabled: boolean;
   searchEngines: string[];
   showBookmarkPath?: boolean;
+  excludeFolders?: boolean;
+  excludedFolderNames?: string[];
 }
 
 export const DEFAULT_CONFIG: SuperBarConfig = {
@@ -14,20 +16,37 @@ export const DEFAULT_CONFIG: SuperBarConfig = {
   enabled: true,
   searchEngines: ['google'],
   showBookmarkPath: true,
+  excludeFolders: false,
+  excludedFolderNames: [],
 };
 
 export async function getConfig(): Promise<SuperBarConfig> {
   return new Promise((resolve) => {
     chrome.storage.local.get(['superbarConfig'], (result) => {
-      resolve(result.superbarConfig || DEFAULT_CONFIG);
+      const error = chrome.runtime.lastError;
+      if (error) {
+        console.error('[SuperBar] Error getting config:', error);
+        resolve(DEFAULT_CONFIG);
+      } else {
+        console.log('[SuperBar] Config loaded:', result.superbarConfig || DEFAULT_CONFIG);
+        resolve(result.superbarConfig || DEFAULT_CONFIG);
+      }
     });
   });
 }
 
 export async function saveConfig(config: SuperBarConfig): Promise<void> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
+    console.log('[SuperBar] Saving config:', config);
     chrome.storage.local.set({ superbarConfig: config }, () => {
-      resolve();
+      const error = chrome.runtime.lastError;
+      if (error) {
+        console.error('[SuperBar] Error saving config:', error);
+        reject(error);
+      } else {
+        console.log('[SuperBar] Config saved successfully');
+        resolve();
+      }
     });
   });
 }

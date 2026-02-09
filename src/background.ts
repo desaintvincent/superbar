@@ -6,14 +6,18 @@
 // Initialize extension on install
 chrome.runtime.onInstalled.addListener((details) => {
   if (details.reason === 'install') {
-    // Set default configuration
+    // Set default configuration with all required properties
     const defaultConfig = {
       shortcut: 'Ctrl+Shift+K',
       enabled: true,
-      searchEngines: ['google', 'wikipedia', 'github'],
+      searchEngines: ['google'],
+      showBookmarkPath: true,
+      excludeFolders: false,
+      excludedFolderNames: [],
     };
 
     chrome.storage.local.set({ superbarConfig: defaultConfig }, () => {
+      console.log('[SuperBar Background] Default config set on install');
       // Open settings page on first install
       chrome.runtime.openOptionsPage();
     });
@@ -133,22 +137,76 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 // Search through all bookmarks
 function searchBookmarks(query: string, callback: (results: any[]) => void) {
-  chrome.bookmarks.search(query, (results) => {
-    // Filter to only bookmarks (not folders), and sort by relevance
-    const bookmarks = results
-      .filter((bookmark) => bookmark.url) // Only items with URLs (actual bookmarks, not folders)
-      .map((bookmark) => ({
-        title: bookmark.title || 'Untitled',
-        url: bookmark.url,
-        id: bookmark.id,
-        parentId: bookmark.parentId,
-        relevance: calculateRelevance(query, bookmark.title || ''),
-      }))
-      .sort((a, b) => b.relevance - a.relevance);
+  // Get current config to check excludeFolders and excluded folders list
+  chrome.storage.local.get(['superbarConfig'], (result) => {
+    const config = result.superbarConfig || {};
+    const excludeFolders = config.excludeFolders === true;
+    const excludedFolderNames = (config.excludedFolderNames || []) as string[];
 
-    // Get paths for bookmarks
-    getBookmarkPaths(bookmarks, (bookmarksWithPaths) => {
-      callback(bookmarksWithPaths);
+    console.log('[SuperBar Background] Search config:', { excludeFolders, excludedFolderNames });
+
+    chrome.bookmarks.search(query, (searchResults) => {
+      // First, build the complete path map for all bookmarks
+      chrome.bookmarks.getTree((bookmarkTreeNodes) => {
+        const bookmarkPathMap: { [key: string]: string[] } = {}; // Maps bookmark ID to full folder path array
+
+        function buildPathMap(nodes: any[], currentPath: string[] = []) {
+          nodes.forEach((node) => {
+            const nodePath = [...currentPath, node.title || ''];
+
+            // Store path for all items (folders and bookmarks)
+            bookmarkPathMap[node.id] = nodePath;
+
+            if (node.children) {
+              buildPathMap(node.children, nodePath);
+            }
+          });
+        }
+
+        buildPathMap(bookmarkTreeNodes);
+
+        console.log('[SuperBar Background] Bookmark path map keys:', Object.keys(bookmarkPathMap).length);
+
+        // Filter bookmarks based on excluded folders
+        const bookmarks = searchResults
+          .filter((bookmark) => {
+            // If excludeFolders is true, only include items with URLs (actual bookmarks)
+            if (excludeFolders && !bookmark.url) {
+              console.log('[SuperBar Background] Filtering out folder (no URL):', bookmark.title);
+              return false;
+            }
+
+            // Get the full path for this bookmark
+            const fullPath = bookmarkPathMap[bookmark.id] || [];
+            console.log('[SuperBar Background] Checking bookmark:', bookmark.title, 'Path:', fullPath);
+
+            // Check if ANY folder in the path is in the excluded list
+            for (const pathFolder of fullPath) {
+              if (excludedFolderNames.includes(pathFolder)) {
+                console.log('[SuperBar Background] Excluding bookmark:', bookmark.title, 'because folder', pathFolder, 'is excluded');
+                return false;
+              }
+            }
+
+            // Always filter out folders without URLs for display
+            return bookmark.url ? true : false;
+          })
+          .map((bookmark) => ({
+            title: bookmark.title || 'Untitled',
+            url: bookmark.url,
+            id: bookmark.id,
+            parentId: bookmark.parentId,
+            relevance: calculateRelevance(query, bookmark.title || ''),
+          }))
+          .sort((a, b) => b.relevance - a.relevance);
+
+        console.log('[SuperBar Background] Filtered results count:', bookmarks.length);
+
+        // Get paths for bookmarks
+        getBookmarkPaths(bookmarks, (bookmarksWithPaths) => {
+          callback(bookmarksWithPaths);
+        });
+      });
     });
   });
 }

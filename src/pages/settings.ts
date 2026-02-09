@@ -33,13 +33,33 @@ function setupEventListeners() {
 }
 async function handleSave(e: Event) {
   e.preventDefault();
+  console.log('[SuperBar Settings] Save button clicked');
+
   const enabledCheckbox = document.getElementById('enabled') as HTMLInputElement;
   const shortcutInput = document.getElementById('shortcut') as HTMLInputElement;
   const showPathCheckbox = document.getElementById('show-path') as HTMLInputElement;
+  const excludeFoldersCheckbox = document.getElementById('exclude-folders') as HTMLInputElement;
+  const excludedFoldersTextarea = document.getElementById('excluded-folders-list') as HTMLTextAreaElement;
   const searchEngineCheckboxes = document.querySelectorAll(
     'input[name="searchEngine"]:checked'
   ) as NodeListOf<HTMLInputElement>;
   const searchEngines = Array.from(searchEngineCheckboxes).map((cb) => cb.value);
+
+  // Parse excluded folders - split by newlines and trim whitespace
+  const excludedFolderNames = excludedFoldersTextarea.value
+    .split('\n')
+    .map((name) => name.trim())
+    .filter((name) => name.length > 0);
+
+  console.log('[SuperBar Settings] Form values collected:', {
+    enabled: enabledCheckbox.checked,
+    shortcut: shortcutInput.value,
+    showPath: showPathCheckbox.checked,
+    excludeFolders: excludeFoldersCheckbox.checked,
+    excludedFolders: excludedFolderNames,
+    searchEngines,
+  });
+
   if (searchEngines.length === 0) {
     showStatus('Please select at least one search engine', 'error');
     return;
@@ -49,12 +69,23 @@ async function handleSave(e: Event) {
     enabled: enabledCheckbox.checked,
     searchEngines,
     showBookmarkPath: showPathCheckbox.checked,
+    excludeFolders: excludeFoldersCheckbox.checked,
+    excludedFolderNames,
   };
+
+  console.log('[SuperBar Settings] Config object to save:', config);
+
   try {
     await saveConfig(config);
+    console.log('[SuperBar Settings] Config saved, reloading...');
     showStatus('Settings saved successfully!', 'success');
+    // Reload page to reflect changes
+    setTimeout(() => {
+      window.location.reload();
+    }, 500);
   } catch (error) {
-    showStatus('Failed to save settings', 'error');
+    console.error('[SuperBar Settings] Save failed:', error);
+    showStatus('Failed to save settings: ' + error, 'error');
   }
 }
 function startRecordingShortcut() {
