@@ -1,12 +1,13 @@
 :root {
-  --primary-color: #2563eb;
-  --primary-hover: #1d4ed8;
-  --secondary-color: #6b7280;
+  --primary-color: #3b82f6;
+  --primary-hover: #2563eb;
+  --secondary-color: #9ca3af;
   --success-color: #10b981;
-  --border-color: #e5e7eb;
-  --bg-color: #f9fafb;
-  --text-color: #111827;
-  --text-muted: #6b7280;
+  --border-color: #374151;
+  --bg-color: #111827;
+  --text-color: #f3f4f6;
+  --text-muted: #9ca3af;
+  --card-bg: #1f2937;
 }
 
 * {
@@ -38,6 +39,7 @@ body {
   font-size: 28px;
   font-weight: 700;
   margin-bottom: 8px;
+  color: var(--text-color);
 }
 
 .header p {
@@ -46,10 +48,11 @@ body {
 }
 
 .settings-form {
-  background: white;
+  background: var(--card-bg);
   border-radius: 8px;
   padding: 24px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-color);
 }
 
 .form-group {
@@ -81,6 +84,8 @@ select {
   font-size: 14px;
   font-family: inherit;
   transition: border-color 0.2s;
+  background-color: #111827;
+  color: var(--text-color);
 }
 
 input[type='text']:focus,
@@ -88,12 +93,13 @@ input[type='number']:focus,
 select:focus {
   outline: none;
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
 }
 
 input[type='text'][readonly] {
-  background-color: #f3f4f6;
+  background-color: #0f172a;
   cursor: not-allowed;
+  color: var(--text-muted);
 }
 
 .shortcut-input-group {
@@ -117,6 +123,7 @@ input[type='text'][readonly] {
   font-weight: 400;
   margin-bottom: 0;
   cursor: pointer;
+  color: var(--text-color);
 }
 
 .checkbox-group input[type='checkbox'] {
@@ -124,6 +131,7 @@ input[type='text'][readonly] {
   width: 16px;
   height: 16px;
   cursor: pointer;
+  accent-color: var(--primary-color);
 }
 
 input[type='checkbox'] {
@@ -131,6 +139,7 @@ input[type='checkbox'] {
   height: 16px;
   cursor: pointer;
   margin-right: 8px;
+  accent-color: var(--primary-color);
 }
 
 .help-text {
@@ -170,8 +179,9 @@ input[type='checkbox'] {
 }
 
 .btn-secondary {
-  background-color: var(--secondary-color);
-  color: white;
+  background-color: #374151;
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
 }
 
 .btn-secondary:hover {
@@ -199,15 +209,15 @@ input[type='checkbox'] {
 }
 
 .status-message.success {
-  background-color: #ecfdf5;
-  color: #065f46;
-  border: 1px solid #86efac;
+  background-color: #064e3b;
+  color: #86efac;
+  border: 1px solid #10b981;
 }
 
 .status-message.error {
-  background-color: #fef2f2;
-  color: #991b1b;
-  border: 1px solid #fca5a5;
+  background-color: #7f1d1d;
+  color: #fca5a5;
+  border: 1px solid #dc2626;
 }
 
 @media (max-width: 480px) {
@@ -231,3 +241,5 @@ input[type='checkbox'] {
     flex-direction: column;
   }
 }
+
+```

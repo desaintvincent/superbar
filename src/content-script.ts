@@ -299,134 +299,150 @@
     style.id = 'superbar-styles';
     style.textContent = `
       #superbar-container * {
-        box-sizing: border-box;
+        box-sizing: border-box !important;
       }
 
       #superbar-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.5);
-        z-index: 999998;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        background: rgba(0, 0, 0, 0.7) !important;
+        z-index: 999998 !important;
       }
 
       #superbar-modal {
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: white;
-        border-radius: 8px;
-        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-        width: 90%;
-        max-width: 600px;
-        z-index: 999999;
-        max-height: 80vh;
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
+        position: fixed !important;
+        top: 50% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) !important;
+        background: #1f2937 !important;
+        border-radius: 8px !important;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5) !important;
+        width: 90% !important;
+        max-width: 600px !important;
+        z-index: 999999 !important;
+        max-height: 80vh !important;
+        overflow: hidden !important;
+        display: flex !important;
+        flex-direction: column !important;
       }
 
       #superbar-header {
-        display: flex;
-        align-items: center;
-        padding: 16px;
-        border-bottom: 1px solid #e5e7eb;
+        display: flex !important;
+        align-items: center !important;
+        padding: 16px !important;
+        border-bottom: 1px solid #374151 !important;
+        background: #1f2937 !important;
       }
 
       #superbar-input {
-        flex: 1;
-        border: none;
-        outline: none;
-        font-size: 16px;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        flex: 1 !important;
+        border: none !important;
+        outline: none !important;
+        font-size: 16px !important;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+        background: #111827 !important;
+        color: #f3f4f6 !important;
+        padding: 8px 12px !important;
+        border-radius: 4px !important;
+      }
+
+      #superbar-input::placeholder {
+        color: #9ca3af !important;
       }
 
       #superbar-close {
-        font-size: 24px;
-        cursor: pointer;
-        color: #6b7280;
-        margin-left: 12px;
-        font-weight: bold;
-        transition: color 0.2s;
+        font-size: 24px !important;
+        cursor: pointer !important;
+        color: #9ca3af !important;
+        margin-left: 12px !important;
+        font-weight: bold !important;
+        transition: color 0.2s !important;
+        background: transparent !important;
+        border: none !important;
+        padding: 0 !important;
       }
 
       #superbar-close:hover {
-        color: #111827;
+        color: #f3f4f6 !important;
       }
 
       #superbar-results {
-        overflow-y: auto;
-        max-height: calc(80vh - 60px);
+        overflow-y: auto !important;
+        max-height: calc(80vh - 60px) !important;
+        background: #1f2937 !important;
       }
 
       .superbar-loading,
       .superbar-no-results {
-        padding: 20px 16px;
-        text-align: center;
-        color: #6b7280;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        font-size: 14px;
+        padding: 20px 16px !important;
+        text-align: center !important;
+        color: #9ca3af !important;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+        font-size: 14px !important;
+        background: #1f2937 !important;
       }
 
       .superbar-result {
-        padding: 12px 16px;
-        border-bottom: 1px solid #f3f4f6;
-        cursor: pointer;
-        transition: background 0.15s;
-        display: flex;
-        align-items: center;
+        padding: 12px 16px !important;
+        border-bottom: 1px solid #374151 !important;
+        cursor: pointer !important;
+        transition: background 0.15s !important;
+        display: flex !important;
+        align-items: center !important;
+        background: #1f2937 !important;
+        color: #f3f4f6 !important;
       }
 
       .superbar-result:hover {
-        background: #f9fafb;
+        background: #111827 !important;
       }
 
       .superbar-result.selected {
-        background: #dbeafe;
-        border-left: 4px solid #2563eb;
-        padding-left: 12px;
-        box-shadow: inset 0 0 0 1px #93c5fd;
+        background: #1e40af !important;
+        border-left: 4px solid #3b82f6 !important;
+        padding-left: 12px !important;
+        box-shadow: inset 0 0 0 1px #1e3a8a !important;
       }
 
       .superbar-result-content {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        width: 100%;
+        display: flex !important;
+        align-items: center !important;
+        gap: 12px !important;
+        width: 100% !important;
       }
 
       .superbar-favicon {
-        width: 16px;
-        height: 16px;
-        flex-shrink: 0;
+        width: 16px !important;
+        height: 16px !important;
+        flex-shrink: 0 !important;
       }
 
       .superbar-result-text {
-        flex: 1;
-        min-width: 0;
+        flex: 1 !important;
+        min-width: 0 !important;
       }
 
       .superbar-result-title {
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        font-size: 14px;
-        color: #1f2937;
-        font-weight: 500;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+        font-size: 14px !important;
+        color: #f3f4f6 !important;
+        font-weight: 500 !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
       }
 
       .superbar-result-url {
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        font-size: 12px;
-        color: #9ca3af;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        margin-top: 2px;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+        font-size: 12px !important;
+        color: #6b7280 !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        margin-top: 2px !important;
       }
     `;
 
