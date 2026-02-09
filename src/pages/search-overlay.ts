@@ -125,6 +125,14 @@
                 ${pathHtml}
                 <div class="superbar-result-url">${escapeHtml(new URL(result.url).hostname)}</div>
               </div>
+              <div class="superbar-result-actions">
+                <button class="superbar-action-btn" data-index="${index}" title="More actions">⋮</button>
+                <div class="superbar-action-menu" data-index="${index}" style="display: none;">
+                  <button class="superbar-action-item" data-action="delete" data-index="${index}">🗑️ Delete</button>
+                  <button class="superbar-action-item" data-action="ignore-folder" data-index="${index}">📁 Ignore Folder</button>
+                  <button class="superbar-action-item" data-action="ignore-bookmark" data-index="${index}">🚫 Ignore Bookmark</button>
+                </div>
+              </div>
             </div>
           </div>
         `;
@@ -133,12 +141,42 @@
 
     const resultElements = resultsContainer.querySelectorAll('.superbar-result');
     resultElements.forEach((elem, index) => {
-      elem.addEventListener('click', () => {
-        if (currentResults[index]) {
-          openBookmark(currentResults[index].url);
-          closeSearch();
-        }
+      // Handle clicking on action menu button
+      const actionBtn = elem.querySelector('.superbar-action-btn');
+      if (actionBtn) {
+        actionBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const menu = elem.querySelector('.superbar-action-menu') as HTMLElement;
+          if (menu) {
+            menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+          }
+        });
+      }
+
+      // Handle action menu items
+      const actionItems = elem.querySelectorAll('.superbar-action-item');
+      actionItems.forEach((item) => {
+        item.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const action = (item as HTMLElement).getAttribute('data-action');
+          const bookmarkIndex = parseInt((item as HTMLElement).getAttribute('data-index') || '0');
+          handleAction(action, bookmarkIndex);
+        });
       });
+
+      // Handle clicking on result content to open bookmark
+      const resultContent = elem.querySelector('.superbar-result-content') as HTMLElement;
+      if (resultContent) {
+        resultContent.addEventListener('click', (e) => {
+          if ((e.target as HTMLElement).closest('.superbar-result-actions')) {
+            return; // Don't open bookmark if clicking actions
+          }
+          if (currentResults[index]) {
+            openBookmark(currentResults[index].url);
+            closeSearch();
+          }
+        });
+      }
 
       elem.addEventListener('mouseenter', () => {
         selectedIndex = index;
@@ -186,6 +224,73 @@
       "'": '&#039;',
     };
     return text.replace(/[&<>"']/g, (char) => map[char]);
+  }
+
+  function handleAction(action: string | null, bookmarkIndex: number) {
+    const bookmark = currentResults[bookmarkIndex];
+    if (!bookmark) return;
+
+    switch (action) {
+      case 'delete':
+        if (confirm(`Delete bookmark: ${bookmark.title}?`)) {
+          chrome.bookmarks.search({ url: bookmark.url }, (results) => {
+            if (results.length > 0) {
+              chrome.bookmarks.remove(results[0].id, () => {
+                console.log('[SuperBar] Bookmark deleted');
+                performSearch((document.getElementById('superbar-input') as HTMLInputElement).value);
+              });
+            }
+          });
+        }
+        break;
+
+      case 'ignore-folder':
+        if (bookmark.path) {
+          const path = bookmark.path;
+          if (confirm(`Add "${path}" to ignored folders?`)) {
+            chrome.storage.local.get(['superbarConfig'], (result) => {
+              const config = result.superbarConfig || {};
+              const excludedFolders = (config.excludedFolders || []) as string[][];
+
+              // Convert path to array: "Bookmarks//home/clim" → ["/home", "clim"]
+              const pathWithoutPrefix = path.replace(/^Bookmarks\/?/, '');
+              const folderArray = pathWithoutPrefix.split('/').filter((p) => p.length > 0);
+
+              // Check if this folder path already exists
+              const folderArrayStr = JSON.stringify(folderArray);
+              const alreadyExists = excludedFolders.some((f) => JSON.stringify(f) === folderArrayStr);
+
+              if (!alreadyExists && folderArray.length > 0) {
+                excludedFolders.push(folderArray);
+                config.excludedFolders = excludedFolders;
+                chrome.storage.local.set({ superbarConfig: config }, () => {
+                  console.log('[SuperBar] Folder added to ignored list:', folderArray);
+                  performSearch((document.getElementById('superbar-input') as HTMLInputElement).value);
+                });
+              }
+            });
+          }
+        }
+        break;
+
+      case 'ignore-bookmark':
+        if (confirm(`Ignore this bookmark in future searches?`)) {
+          chrome.storage.local.get(['superbarConfig'], (result) => {
+            const config = result.superbarConfig || {};
+            const ignoredBookmarks = config.ignoredBookmarks || [];
+
+            if (!ignoredBookmarks.includes(bookmark.url)) {
+              ignoredBookmarks.push(bookmark.url);
+              config.ignoredBookmarks = ignoredBookmarks;
+              chrome.storage.local.set({ superbarConfig: config }, () => {
+                console.log('[SuperBar] Bookmark added to ignored list');
+                performSearch((document.getElementById('superbar-input') as HTMLInputElement).value);
+              });
+            }
+          });
+        }
+        break;
+    }
   }
 
   function closeSearch() {

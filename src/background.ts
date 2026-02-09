@@ -134,15 +134,50 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   return true;
 });
 
+// Helper function to check if a bookmark path is within an excluded folder
+function isPathInFolder(bookmarkPath: string[], excludedPath: string[]): boolean {
+  // If excluded path is longer than bookmark path, it can't contain it
+  if (excludedPath.length > bookmarkPath.length) {
+    return false;
+  }
+
+  // Check if all elements of excludedPath match the start of bookmarkPath
+  for (let i = 0; i < excludedPath.length; i++) {
+    if (bookmarkPath[i] !== excludedPath[i]) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+// Migrate old config format to new format
+function migrateConfig(config: any): any {
+  // If old format exists, convert to new format
+  if (config.excludedFolderNames && !config.excludedFolders) {
+    console.log('[SuperBar Background] Migrating old config format');
+    config.excludedFolders = (config.excludedFolderNames as string[]).map((folder: string) => {
+      // Convert "/home/clim" → ["/home", "clim"]
+      // or "/dev" → ["/dev"]
+      const cleaned = folder.startsWith('/') ? folder.substring(1) : folder;
+      return cleaned.split('/').map((part) => part.length > 0 ? (part.startsWith('/') ? part : '/' + part) : '').filter((p) => p);
+    });
+    delete config.excludedFolderNames;
+    chrome.storage.local.set({ superbarConfig: config });
+  }
+  return config;
+}
+
 // Search through all bookmarks
 function searchBookmarks(query: string, callback: (results: any[]) => void) {
-  // Get current config to check excluded folders list
+  // Get current config to check excluded folders and ignored bookmarks
   chrome.storage.local.get(['superbarConfig'], (result) => {
-    const config = result.superbarConfig || {};
-    const excludedFolderNames = (config.excludedFolderNames || []) as string[];
-    const hasExcludedFolders = excludedFolderNames.length > 0;
+    let config = result.superbarConfig || {};
+    config = migrateConfig(config);
+    const excludedFolders = (config.excludedFolders || []) as string[][];
+    const ignoredBookmarks = (config.ignoredBookmarks || []) as string[];
 
-    console.log('[SuperBar Background] Search config:', { excludedFolderNames, hasExcludedFolders });
+    console.log('[SuperBar Background] Search config:', { excludedFolders, ignoredBookmarks });
 
     chrome.bookmarks.search(query, (searchResults) => {
       // First, build the complete path map for all bookmarks
@@ -151,7 +186,9 @@ function searchBookmarks(query: string, callback: (results: any[]) => void) {
 
         function buildPathMap(nodes: any[], currentPath: string[] = []) {
           nodes.forEach((node) => {
-            const nodePath = [...currentPath, node.title || ''];
+            const nodeTitle = node.title || '';
+            // Only add to path if title is not empty
+            const nodePath = nodeTitle ? [...currentPath, nodeTitle] : currentPath;
 
             // Store path for all items (folders and bookmarks)
             bookmarkPathMap[node.id] = nodePath;
@@ -166,7 +203,7 @@ function searchBookmarks(query: string, callback: (results: any[]) => void) {
 
         console.log('[SuperBar Background] Bookmark path map keys:', Object.keys(bookmarkPathMap).length);
 
-        // Filter bookmarks based on excluded folders
+        // Filter bookmarks based on excluded folders and ignored bookmarks
         const bookmarks = searchResults
           .filter((bookmark) => {
             // Always filter out folders without URLs
@@ -174,14 +211,27 @@ function searchBookmarks(query: string, callback: (results: any[]) => void) {
               return false;
             }
 
+            // Check if this bookmark is in the ignored list
+            if (ignoredBookmarks.includes(bookmark.url)) {
+              console.log('[SuperBar Background] Skipping ignored bookmark:', bookmark.title);
+              return false;
+            }
+
             // Get the full path for this bookmark
             const fullPath = bookmarkPathMap[bookmark.id] || [];
             console.log('[SuperBar Background] Checking bookmark:', bookmark.title, 'Path:', fullPath);
 
-            // Check if ANY folder in the path is in the excluded list
-            for (const pathFolder of fullPath) {
-              if (excludedFolderNames.includes(pathFolder)) {
-                console.log('[SuperBar Background] Excluding bookmark:', bookmark.title, 'because folder', pathFolder, 'is excluded');
+            // Check if the bookmark's path is within any excluded folder
+            for (const excludedFolder of excludedFolders) {
+              // Build the full excluded path with "Bookmarks" prefix
+              const fullExcludedPath = ['Bookmarks', ...excludedFolder];
+
+              console.log('[SuperBar Background] Comparing path array', fullPath, 'with excluded', fullExcludedPath);
+              console.log('[SuperBar Background] isPathInFolder result:', isPathInFolder(fullPath, fullExcludedPath));
+
+              // Check if bookmark is in the excluded folder or its subfolders
+              if (isPathInFolder(fullPath, fullExcludedPath)) {
+                console.log('[SuperBar Background] Excluding bookmark:', bookmark.title, 'because path', fullPath, 'is in excluded folder', fullExcludedPath);
                 return false;
               }
             }

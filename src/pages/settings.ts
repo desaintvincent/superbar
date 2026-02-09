@@ -14,17 +14,27 @@ document.addEventListener('DOMContentLoaded', async () => {
   const shortcutInput = document.getElementById('shortcut') as HTMLInputElement;
   const showPathCheckbox = document.getElementById('show-path') as HTMLInputElement;
   const excludedFoldersTextarea = document.getElementById('excluded-folders-list') as HTMLTextAreaElement;
+  const ignoredBookmarksTextarea = document.getElementById('ignored-bookmarks-list') as HTMLTextAreaElement;
 
   enabledCheckbox.checked = config.enabled;
   shortcutInput.value = config.shortcut;
   showPathCheckbox.checked = config.showBookmarkPath !== false;
-  excludedFoldersTextarea.value = (config.excludedFolderNames || []).join('\n');
+
+  // Display excluded folders as compact JSON (don't reformat)
+  const excludedFolders = config.excludedFolders || [];
+  const excludedFoldersText = excludedFolders.length > 0
+    ? JSON.stringify(excludedFolders)
+    : '[]';
+  excludedFoldersTextarea.value = excludedFoldersText;
+
+  ignoredBookmarksTextarea.value = (config.ignoredBookmarks || []).join('\n');
 
   console.log('[SuperBar Settings] Form loaded with:', {
     enabled: enabledCheckbox.checked,
     shortcut: shortcutInput.value,
     showPath: showPathCheckbox.checked,
     excludedFolders: excludedFoldersTextarea.value,
+    ignoredBookmarks: ignoredBookmarksTextarea.value,
   });
 
   // Setup event listeners
@@ -46,18 +56,38 @@ async function handleSave(e: Event) {
   const shortcutInput = document.getElementById('shortcut') as HTMLInputElement;
   const showPathCheckbox = document.getElementById('show-path') as HTMLInputElement;
   const excludedFoldersTextarea = document.getElementById('excluded-folders-list') as HTMLTextAreaElement;
+  const ignoredBookmarksTextarea = document.getElementById('ignored-bookmarks-list') as HTMLTextAreaElement;
 
-  // Parse excluded folders - split by newlines and trim whitespace
-  const excludedFolderNames = excludedFoldersTextarea.value
+  // Parse excluded folders - read as full JSON array, ignore newlines
+  let excludedFolders: string[][] = [];
+  const folderText = excludedFoldersTextarea.value.trim();
+  if (folderText) {
+    try {
+      // Replace newlines and extra whitespace, keep the JSON structure intact
+      const cleanedText = folderText.replace(/\n/g, '').replace(/\s+/g, ' ');
+      const parsed = JSON.parse(cleanedText);
+      if (Array.isArray(parsed)) {
+        excludedFolders = parsed.filter((item) => Array.isArray(item));
+      }
+    } catch (error) {
+      console.error('[SuperBar Settings] Invalid JSON in excluded folders:', error);
+      showStatus('Invalid JSON in excluded folders field', 'error');
+      return;
+    }
+  }
+
+  // Parse ignored bookmarks - split by newlines and trim whitespace
+  const ignoredBookmarks = ignoredBookmarksTextarea.value
     .split('\n')
-    .map((name) => name.trim())
-    .filter((name) => name.length > 0);
+    .map((url) => url.trim())
+    .filter((url) => url.length > 0);
 
   console.log('[SuperBar Settings] Form values collected:', {
     enabled: enabledCheckbox.checked,
     shortcut: shortcutInput.value,
     showPath: showPathCheckbox.checked,
-    excludedFolders: excludedFolderNames,
+    excludedFolders,
+    ignoredBookmarks,
   });
 
   const config = {
@@ -65,7 +95,8 @@ async function handleSave(e: Event) {
     enabled: enabledCheckbox.checked,
     searchEngines: ['google'],
     showBookmarkPath: showPathCheckbox.checked,
-    excludedFolderNames,
+    excludedFolders,
+    ignoredBookmarks,
   };
 
   console.log('[SuperBar Settings] Config object to save:', config);

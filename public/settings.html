@@ -62,14 +62,25 @@
         </div>
 
         <div class="form-group">
-          <label for="excluded-folders-list">Excluded Folder Names</label>
+          <label for="excluded-folders-list">Excluded Folders (JSON Array)</label>
           <textarea
             id="excluded-folders-list"
-            name="excludedFolderNames"
-            placeholder="Enter folder names to exclude, one per line&#10;Example:&#10;Archived&#10;Old Projects&#10;To Sort"
+            name="excludedFolders"
+            placeholder="[&#10;  [&quot;/dev&quot;],&#10;  [&quot;/null&quot;],&#10;  [&quot;/home&quot;, &quot;clim&quot;],&#10;  [&quot;pathWithDash/name&quot;]&#10;]"
+            rows="8"
+          ></textarea>
+          <p class="help-text">Full JSON array format. Each sub-array is a folder path. Folder names can contain "/".</p>
+        </div>
+
+        <div class="form-group">
+          <label for="ignored-bookmarks-list">Ignored Bookmarks</label>
+          <textarea
+            id="ignored-bookmarks-list"
+            name="ignoredBookmarks"
+            placeholder="Enter bookmark URLs to ignore, one per line&#10;Example:&#10;https://example.com&#10;https://test.com"
             rows="6"
           ></textarea>
-          <p class="help-text">List of bookmark folder names to exclude from search results (one per line)</p>
+          <p class="help-text">List of bookmark URLs to exclude from search results (one per line)</p>
         </div>
 
         <div class="form-actions">

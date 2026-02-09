@@ -177,6 +177,68 @@
         text-overflow: ellipsis;
         margin-top: 2px;
       }
+
+      .superbar-result-actions {
+        position: relative;
+        margin-left: auto;
+        padding-left: 8px;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+      }
+
+      .superbar-action-btn {
+        background: transparent;
+        border: none;
+        color: #9ca3af;
+        cursor: pointer;
+        font-size: 18px;
+        padding: 4px 8px;
+        transition: color 0.2s;
+      }
+
+      .superbar-action-btn:hover {
+        color: #f3f4f6;
+      }
+
+      .superbar-action-menu {
+        position: absolute;
+        right: 0;
+        top: 100%;
+        background: #374151;
+        border: 1px solid #4b5563;
+        border-radius: 4px;
+        min-width: 160px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        z-index: 1000;
+        margin-top: 4px;
+      }
+
+      .superbar-action-item {
+        display: block;
+        width: 100%;
+        padding: 8px 12px;
+        background: transparent;
+        border: none;
+        color: #f3f4f6;
+        text-align: left;
+        cursor: pointer;
+        font-size: 13px;
+        font-family: inherit;
+        transition: background 0.2s;
+      }
+
+      .superbar-action-item:first-child {
+        border-radius: 3px 3px 0 0;
+      }
+
+      .superbar-action-item:last-child {
+        border-radius: 0 0 3px 3px;
+      }
+
+      .superbar-action-item:hover {
+        background: #4b5563;
+      }
     </style>
   </head>
   <body>

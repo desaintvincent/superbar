@@ -7,7 +7,8 @@ export interface SuperBarConfig {
   enabled: boolean;
   searchEngines: string[];
   showBookmarkPath?: boolean;
-  excludedFolderNames?: string[];
+  excludedFolders?: string[][];
+  ignoredBookmarks?: string[];
 }
 
 export const DEFAULT_CONFIG: SuperBarConfig = {
@@ -15,7 +16,8 @@ export const DEFAULT_CONFIG: SuperBarConfig = {
   enabled: true,
   searchEngines: ['google'],
   showBookmarkPath: true,
-  excludedFolderNames: [],
+  excludedFolders: [],
+  ignoredBookmarks: [],
 };
 
 export async function getConfig(): Promise<SuperBarConfig> {
