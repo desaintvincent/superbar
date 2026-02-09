@@ -126,6 +126,25 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       }
       break;
 
+    case 'DELETE_BOOKMARK':
+      if (message.payload?.url) {
+        chrome.bookmarks.search({ url: message.payload.url }, (results) => {
+          if (results.length > 0) {
+            chrome.bookmarks.remove(results[0].id, () => {
+              console.log('[SuperBar] Bookmark deleted:', results[0].id);
+              sendResponse({ success: true });
+            });
+          } else {
+            console.log('[SuperBar] Bookmark not found:', message.payload.url);
+            sendResponse({ success: false });
+          }
+        });
+        return true;
+      } else {
+        sendResponse({ success: false });
+      }
+      break;
+
     default:
       sendResponse({ error: 'Unknown message type' });
   }

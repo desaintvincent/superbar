@@ -333,14 +333,13 @@
     switch (action) {
       case 'delete':
         if (confirm(`Delete bookmark: ${bookmark.title}?`)) {
-          chrome.bookmarks.search({ url: bookmark.url }, (results) => {
-            if (results.length > 0) {
-              chrome.bookmarks.remove(results[0].id, () => {
-                console.log('[SuperBar] Bookmark deleted');
-                const query = (document.getElementById('superbar-input') as HTMLInputElement)?.value || '';
-                if (query) performSearch(query);
-              });
-            }
+          chrome.runtime.sendMessage({
+            type: 'DELETE_BOOKMARK',
+            payload: { url: bookmark.url },
+          }, () => {
+            console.log('[SuperBar] Bookmark deleted');
+            const query = (document.getElementById('superbar-input') as HTMLInputElement)?.value || '';
+            if (query) performSearch(query);
           });
         }
         break;
