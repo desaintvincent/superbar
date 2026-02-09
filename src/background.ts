@@ -26,11 +26,33 @@ chrome.commands.onCommand.addListener((command) => {
     // Get the active tab and trigger search
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (tabs[0]?.id) {
-        // Try to send message to content script
-        chrome.tabs.sendMessage(tabs[0].id, { type: 'OPEN_SEARCH' }).catch(() => {
-          // If content script not available, try to inject it
-          tryInjectContentScript(tabs[0].id!);
-        });
+        const tabUrl = tabs[0].url || '';
+
+        // Check if it's a restricted page
+        const isRestricted = tabUrl.startsWith('chrome://') ||
+                            tabUrl.startsWith('edge://') ||
+                            tabUrl.startsWith('file://');
+
+        if (isRestricted) {
+          // Open search in a new window for restricted pages
+          chrome.windows.create({
+            url: chrome.runtime.getURL('search-overlay.html'),
+            type: 'popup',
+            width: 700,
+            height: 400,
+          });
+        } else {
+          // Try to send message to content script for normal pages
+          chrome.tabs.sendMessage(tabs[0].id, { type: 'OPEN_SEARCH' }).catch(() => {
+            // Fallback to window for pages where content script can't run
+            chrome.windows.create({
+              url: chrome.runtime.getURL('search-overlay.html'),
+              type: 'popup',
+              width: 700,
+              height: 400,
+            });
+          });
+        }
       }
     });
   }
@@ -39,40 +61,34 @@ chrome.commands.onCommand.addListener((command) => {
 // Handle action button click
 chrome.action.onClicked.addListener((tab) => {
   if (tab.id) {
-    chrome.tabs.sendMessage(tab.id, { type: 'OPEN_SEARCH' }).catch(() => {
-      tryInjectContentScript(tab.id!);
-    });
+    const tabUrl = tab.url || '';
+
+    // Check if it's a restricted page
+    const isRestricted = tabUrl.startsWith('chrome://') ||
+                        tabUrl.startsWith('edge://') ||
+                        tabUrl.startsWith('file://');
+
+    if (isRestricted) {
+      chrome.windows.create({
+        url: chrome.runtime.getURL('search-overlay.html'),
+        type: 'popup',
+        width: 700,
+        height: 400,
+      });
+    } else {
+      chrome.tabs.sendMessage(tab.id, { type: 'OPEN_SEARCH' }).catch(() => {
+        chrome.windows.create({
+          url: chrome.runtime.getURL('search-overlay.html'),
+          type: 'popup',
+          width: 700,
+          height: 400,
+        });
+      });
+    }
   }
 });
 
-// Try to inject content script on restricted pages
-function tryInjectContentScript(tabId: number) {
-  chrome.tabs.get(tabId, (tab) => {
-    if (tab.url) {
-      // Check if it's a restricted page
-      const isRestricted = tab.url.startsWith('chrome://') ||
-                          tab.url.startsWith('chrome-extension://') ||
-                          tab.url.startsWith('edge://');
-
-      if (isRestricted) {
-        console.log('[SuperBar] Cannot inject on restricted page:', tab.url);
-        return;
-      }
-    }
-
-    // Try to inject on all other pages including error pages
-    chrome.scripting.executeScript({
-      target: { tabId, allFrames: true },
-      files: ['content-script.js']
-    }).catch((error) => {
-      console.log('[SuperBar] Injection failed:', error.message);
-      // If injection fails, try sending message anyway (script might already be there)
-      chrome.tabs.sendMessage(tabId, { type: 'OPEN_SEARCH' }).catch(() => {
-        console.log('[SuperBar] Cannot access this page');
-      });
-    });
-  });
-}
+// ...existing code...
 
 // Listen for messages from content scripts and settings pages
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {

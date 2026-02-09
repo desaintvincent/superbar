@@ -12,6 +12,7 @@ export default {
     'content-script': './src/content-script.ts',
     'popup': './src/pages/popup.ts',
     'settings': './src/pages/settings.ts',
+    'search-overlay': './src/pages/search-overlay.ts',
   },
   output: {
     path: path.resolve(__dirname, 'dist'),
