@@ -304,6 +304,4 @@
   function closeSearch() {
     window.close();
   }
-
-  console.log('[SuperBar] Search overlay loaded');
 })();

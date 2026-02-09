@@ -110,7 +110,6 @@ async function handleSave(e: Event) {
       window.location.reload();
     }, 500);
   } catch (error) {
-    console.error('[SuperBar Settings] Save failed:', error);
     showStatus('Failed to save settings: ' + error, 'error');
   }
 }

@@ -392,7 +392,6 @@
               ignoredBookmarks.push(bookmark.url);
               config.ignoredBookmarks = ignoredBookmarks;
               chrome.storage.local.set({ superbarConfig: config }, () => {
-                console.log('[SuperBar] Bookmark added to ignored list');
                 const query = (document.getElementById('superbar-input') as HTMLInputElement)?.value || '';
                 if (query) performSearch(query);
               });
@@ -627,6 +626,4 @@
 
     document.head.appendChild(style);
   }
-
-  console.log('[SuperBar] Content script loaded');
 })();

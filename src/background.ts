@@ -16,7 +16,6 @@ chrome.runtime.onInstalled.addListener((details) => {
     };
 
     chrome.storage.local.set({ superbarConfig: defaultConfig }, () => {
-      console.log('[SuperBar Background] Default config set on install');
       // Open settings page on first install
       chrome.runtime.openOptionsPage();
     });
@@ -194,7 +193,6 @@ function calculateBookmarkWeight(params: {
 function migrateConfig(config: any): any {
   // If old format exists, convert to new format
   if (config.excludedFolderNames && !config.excludedFolders) {
-    console.log('[SuperBar Background] Migrating old config format');
     config.excludedFolders = (config.excludedFolderNames as string[]).map((folder: string) => {
       // Convert "/home/clim" → ["/home", "clim"]
       // or "/dev" → ["/dev"]
@@ -377,7 +375,6 @@ function notifyAllTabs(config: any) {
 
 // Track bookmark usage
 function trackBookmarkUsage(url: string) {
-  console.log('[SuperBar] Tracking usage for:', url);
   chrome.storage.local.get(['superbarConfig'], (result) => {
     const config = result.superbarConfig || {};
     const bookmarkUsage = config.bookmarkUsage || {};
@@ -385,9 +382,7 @@ function trackBookmarkUsage(url: string) {
     bookmarkUsage[url] = (bookmarkUsage[url] || 0) + 1;
     config.bookmarkUsage = bookmarkUsage;
 
-    chrome.storage.local.set({ superbarConfig: config }, () => {
-      console.log('[SuperBar] Bookmark usage updated:', url, 'count:', bookmarkUsage[url]);
-    });
+    chrome.storage.local.set({ superbarConfig: config }, () => {});
   });
 }
 
