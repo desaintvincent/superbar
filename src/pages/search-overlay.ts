@@ -254,7 +254,12 @@
 
               // Convert path to array: "Bookmarks//home/clim" → ["/home", "clim"]
               const pathWithoutPrefix = path.replace(/^Bookmarks\/?/, '');
-              const folderArray = pathWithoutPrefix.split('/').filter((p) => p.length > 0);
+              const parts = pathWithoutPrefix.split('/').filter((p) => p.length > 0);
+
+              // Add leading / to first element if not already there
+              const folderArray = parts.length > 0
+                ? [parts[0].startsWith('/') ? parts[0] : '/' + parts[0], ...parts.slice(1)]
+                : [];
 
               // Check if this folder path already exists
               const folderArrayStr = JSON.stringify(folderArray);
