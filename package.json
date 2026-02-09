@@ -1,0 +1,30 @@
+{
+  "name": "superbar",
+  "version": "1.0.0",
+  "description": "A Chrome extension with a configurable search bar",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "webpack --watch --mode development",
+    "build": "webpack --mode production",
+    "clean": "rm -rf dist",
+    "prebuild": "npm run clean",
+    "type-check": "tsc --noEmit --listFiles false",
+    "lint": "eslint src --ext .ts,.tsx"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.268",
+    "@types/node": "^20.10.6",
+    "@typescript-eslint/eslint-plugin": "^6.16.0",
+    "@typescript-eslint/parser": "^6.16.0",
+    "copy-webpack-plugin": "^11.0.0",
+    "css-loader": "^6.8.1",
+    "eslint": "^8.56.0",
+    "style-loader": "^3.3.3",
+    "ts-loader": "^9.5.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3",
+    "webpack": "^5.89.0",
+    "webpack-cli": "^5.1.4"
+  }
+}
