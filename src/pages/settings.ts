@@ -7,19 +7,26 @@ let recordedKeys: string[] = [];
 // Load settings on page load
 document.addEventListener('DOMContentLoaded', async () => {
   const config = await getConfig();
+  console.log('[SuperBar Settings] Loading config into form:', config);
+
   // Set form values
   const enabledCheckbox = document.getElementById('enabled') as HTMLInputElement;
   const shortcutInput = document.getElementById('shortcut') as HTMLInputElement;
   const showPathCheckbox = document.getElementById('show-path') as HTMLInputElement;
-  const searchEngineCheckboxes = document.querySelectorAll(
-    'input[name="searchEngine"]'
-  ) as NodeListOf<HTMLInputElement>;
+  const excludedFoldersTextarea = document.getElementById('excluded-folders-list') as HTMLTextAreaElement;
+
   enabledCheckbox.checked = config.enabled;
   shortcutInput.value = config.shortcut;
   showPathCheckbox.checked = config.showBookmarkPath !== false;
-  searchEngineCheckboxes.forEach((checkbox) => {
-    checkbox.checked = config.searchEngines.includes(checkbox.value);
+  excludedFoldersTextarea.value = (config.excludedFolderNames || []).join('\n');
+
+  console.log('[SuperBar Settings] Form loaded with:', {
+    enabled: enabledCheckbox.checked,
+    shortcut: shortcutInput.value,
+    showPath: showPathCheckbox.checked,
+    excludedFolders: excludedFoldersTextarea.value,
   });
+
   // Setup event listeners
   setupEventListeners();
 });
@@ -38,12 +45,7 @@ async function handleSave(e: Event) {
   const enabledCheckbox = document.getElementById('enabled') as HTMLInputElement;
   const shortcutInput = document.getElementById('shortcut') as HTMLInputElement;
   const showPathCheckbox = document.getElementById('show-path') as HTMLInputElement;
-  const excludeFoldersCheckbox = document.getElementById('exclude-folders') as HTMLInputElement;
   const excludedFoldersTextarea = document.getElementById('excluded-folders-list') as HTMLTextAreaElement;
-  const searchEngineCheckboxes = document.querySelectorAll(
-    'input[name="searchEngine"]:checked'
-  ) as NodeListOf<HTMLInputElement>;
-  const searchEngines = Array.from(searchEngineCheckboxes).map((cb) => cb.value);
 
   // Parse excluded folders - split by newlines and trim whitespace
   const excludedFolderNames = excludedFoldersTextarea.value
@@ -55,21 +57,14 @@ async function handleSave(e: Event) {
     enabled: enabledCheckbox.checked,
     shortcut: shortcutInput.value,
     showPath: showPathCheckbox.checked,
-    excludeFolders: excludeFoldersCheckbox.checked,
     excludedFolders: excludedFolderNames,
-    searchEngines,
   });
 
-  if (searchEngines.length === 0) {
-    showStatus('Please select at least one search engine', 'error');
-    return;
-  }
   const config = {
     shortcut: shortcutInput.value,
     enabled: enabledCheckbox.checked,
-    searchEngines,
+    searchEngines: ['google'],
     showBookmarkPath: showPathCheckbox.checked,
-    excludeFolders: excludeFoldersCheckbox.checked,
     excludedFolderNames,
   };
 

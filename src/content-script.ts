@@ -8,7 +8,6 @@
     shortcut: string;
     enabled: boolean;
     showBookmarkPath?: boolean;
-    excludeFolders?: boolean;
     excludedFolderNames?: string[];
   }
 

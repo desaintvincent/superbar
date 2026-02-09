@@ -12,7 +12,6 @@ chrome.runtime.onInstalled.addListener((details) => {
       enabled: true,
       searchEngines: ['google'],
       showBookmarkPath: true,
-      excludeFolders: false,
       excludedFolderNames: [],
     };
 
@@ -137,13 +136,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 // Search through all bookmarks
 function searchBookmarks(query: string, callback: (results: any[]) => void) {
-  // Get current config to check excludeFolders and excluded folders list
+  // Get current config to check excluded folders list
   chrome.storage.local.get(['superbarConfig'], (result) => {
     const config = result.superbarConfig || {};
-    const excludeFolders = config.excludeFolders === true;
     const excludedFolderNames = (config.excludedFolderNames || []) as string[];
+    const hasExcludedFolders = excludedFolderNames.length > 0;
 
-    console.log('[SuperBar Background] Search config:', { excludeFolders, excludedFolderNames });
+    console.log('[SuperBar Background] Search config:', { excludedFolderNames, hasExcludedFolders });
 
     chrome.bookmarks.search(query, (searchResults) => {
       // First, build the complete path map for all bookmarks
@@ -170,9 +169,8 @@ function searchBookmarks(query: string, callback: (results: any[]) => void) {
         // Filter bookmarks based on excluded folders
         const bookmarks = searchResults
           .filter((bookmark) => {
-            // If excludeFolders is true, only include items with URLs (actual bookmarks)
-            if (excludeFolders && !bookmark.url) {
-              console.log('[SuperBar Background] Filtering out folder (no URL):', bookmark.title);
+            // Always filter out folders without URLs
+            if (!bookmark.url) {
               return false;
             }
 
@@ -188,8 +186,8 @@ function searchBookmarks(query: string, callback: (results: any[]) => void) {
               }
             }
 
-            // Always filter out folders without URLs for display
-            return bookmark.url ? true : false;
+            // Always include bookmarks with URLs
+            return true;
           })
           .map((bookmark) => ({
             title: bookmark.title || 'Untitled',

@@ -6,7 +6,6 @@ export interface SuperBarConfig {
     enabled: boolean;
     searchEngines: string[];
     showBookmarkPath?: boolean;
-    excludeFolders?: boolean;
     excludedFolderNames?: string[];
 }
 export declare const DEFAULT_CONFIG: SuperBarConfig;

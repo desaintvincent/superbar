@@ -7,7 +7,6 @@ export interface SuperBarConfig {
   enabled: boolean;
   searchEngines: string[];
   showBookmarkPath?: boolean;
-  excludeFolders?: boolean;
   excludedFolderNames?: string[];
 }
 
@@ -16,7 +15,6 @@ export const DEFAULT_CONFIG: SuperBarConfig = {
   enabled: true,
   searchEngines: ['google'],
   showBookmarkPath: true,
-  excludeFolders: false,
   excludedFolderNames: [],
 };
 
