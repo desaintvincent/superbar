@@ -57,21 +57,6 @@ export async function sendMessageToBackground(message: any): Promise<any> {
     });
   });
 }
-
-/**
- * Parse keyboard shortcut string (e.g., "Ctrl+Shift+K")
- */
-export function parseShortcut(shortcut: string) {
-  const keys = shortcut.split('+').map((k) => k.trim());
-  return {
-    ctrl: keys.includes('Ctrl'),
-    shift: keys.includes('Shift'),
-    alt: keys.includes('Alt'),
-    meta: keys.includes('Meta'),
-    key: keys[keys.length - 1],
-  };
-}
-
 /**
  * Calculate weight for sorting bookmarks
  * Can accept multiple parameters for future expansion

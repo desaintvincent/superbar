@@ -8,7 +8,6 @@ chrome.runtime.onInstalled.addListener((details) => {
   if (details.reason === 'install') {
     // Set default configuration with all required properties
     const defaultConfig = {
-      shortcut: 'Ctrl+Shift+K',
       enabled: true,
       searchEngines: ['google'],
       showBookmarkPath: true,
@@ -25,69 +24,25 @@ chrome.runtime.onInstalled.addListener((details) => {
 // Handle command (keyboard shortcut)
 chrome.commands.onCommand.addListener((command) => {
   if (command === '_execute_action') {
-    // Get the active tab and trigger search
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      if (tabs[0]?.id) {
-        const tabUrl = tabs[0].url || '';
-
-        // Check if it's a restricted page
-        const isRestricted = tabUrl.startsWith('chrome://') ||
-                            tabUrl.startsWith('edge://') ||
-                            tabUrl.startsWith('file://');
-
-        if (isRestricted) {
-          // Open search in a new window for restricted pages
-          chrome.windows.create({
-            url: chrome.runtime.getURL('search-overlay.html'),
-            type: 'popup',
-            width: 700,
-            height: 400,
-          });
-        } else {
-          // Try to send message to content script for normal pages
-          chrome.tabs.sendMessage(tabs[0].id, { type: 'OPEN_SEARCH' }).catch(() => {
-            // Fallback to window for pages where content script can't run
-            chrome.windows.create({
-              url: chrome.runtime.getURL('search-overlay.html'),
-              type: 'popup',
-              width: 700,
-              height: 400,
-            });
-          });
-        }
-      }
+    // Open search in a command palette popup window
+    chrome.windows.create({
+      url: chrome.runtime.getURL('search-overlay.html'),
+      type: 'popup',
+      width: 600,
+      height: 500,
     });
   }
 });
 
 // Handle action button click
-chrome.action.onClicked.addListener((tab) => {
-  if (tab.id) {
-    const tabUrl = tab.url || '';
-
-    // Check if it's a restricted page
-    const isRestricted = tabUrl.startsWith('chrome://') ||
-                        tabUrl.startsWith('edge://') ||
-                        tabUrl.startsWith('file://');
-
-    if (isRestricted) {
-      chrome.windows.create({
-        url: chrome.runtime.getURL('search-overlay.html'),
-        type: 'popup',
-        width: 700,
-        height: 400,
-      });
-    } else {
-      chrome.tabs.sendMessage(tab.id, { type: 'OPEN_SEARCH' }).catch(() => {
-        chrome.windows.create({
-          url: chrome.runtime.getURL('search-overlay.html'),
-          type: 'popup',
-          width: 700,
-          height: 400,
-        });
-      });
-    }
-  }
+chrome.action.onClicked.addListener(() => {
+  // Always open search in a command palette popup window
+  chrome.windows.create({
+    url: chrome.runtime.getURL('search-overlay.html'),
+    type: 'popup',
+    width: 600,
+    height: 500,
+  });
 });
 
 // ...existing code...
@@ -104,8 +59,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     case 'SAVE_CONFIG':
       chrome.storage.local.set({ superbarConfig: message.payload }, () => {
         sendResponse({ success: true });
-        // Notify all tabs about the config change
-        notifyAllTabs(message.payload);
       });
       break;
 
@@ -355,22 +308,6 @@ function calculateRelevance(query: string, title: string): number {
   );
 
   return matchedWords.length > 0 ? (matchedWords.length / queryWords.length) * 100 : 0;
-}
-
-// Helper function to notify all tabs about configuration changes
-function notifyAllTabs(config: any) {
-  chrome.tabs.query({}, (tabs) => {
-    tabs.forEach((tab) => {
-      if (tab.id) {
-        chrome.tabs.sendMessage(tab.id, {
-          type: 'CONFIG_UPDATED',
-          payload: config,
-        }).catch(() => {
-          // Tab might not have content script loaded, ignore error
-        });
-      }
-    });
-  });
 }
 
 // Track bookmark usage

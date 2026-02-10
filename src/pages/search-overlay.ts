@@ -17,7 +17,6 @@
   document.addEventListener('DOMContentLoaded', () => {
     const input = document.getElementById('superbar-input') as HTMLInputElement;
     const closeBtn = document.getElementById('superbar-close');
-    const overlay = document.getElementById('superbar-overlay');
 
     if (input) {
       input.focus();
@@ -30,13 +29,22 @@
       });
     }
 
-    if (overlay) {
-      overlay.addEventListener('click', () => {
-        closeSearch();
-      });
-    }
-
     document.addEventListener('keydown', handleKeydown);
+
+  });
+
+  window.addEventListener("blur", () => {
+    closeSearch();
+  });
+
+// Fires when the page is being unloaded / put into BFCache-like lifecycle
+  window.addEventListener("pagehide", () => {
+    closeSearch();
+  });
+
+// Extra safety on some platforms
+  window.addEventListener("beforeunload", () => {
+    closeSearch();
   });
 
   function handleSearch(e: Event) {
