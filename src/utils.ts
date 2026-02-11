@@ -103,12 +103,30 @@ export async function incrementBookmarkUsage(url: string): Promise<void> {
     const db = await initializeDB();
     const currentCount = await getBookmarkUsage(url);
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction([STORE_NAME], 'readwrite');
-      const store = transaction.objectStore(STORE_NAME);
-      const request = store.put(currentCount + 1, url);
+      try {
+        const transaction = db.transaction([STORE_NAME], 'readwrite');
+        const store = transaction.objectStore(STORE_NAME);
+        const newCount = currentCount + 1;
+        const request = store.put(newCount, url);
 
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve();
+        request.onerror = () => {
+          console.error('[SuperBar] Error incrementing bookmark usage:', request.error);
+          reject(request.error);
+        };
+
+        request.onsuccess = () => {
+          console.log('[SuperBar] Incremented usage for', url, 'to', newCount);
+          resolve();
+        };
+
+        transaction.onerror = () => {
+          console.error('[SuperBar] Transaction error in incrementBookmarkUsage:', transaction.error);
+          reject(transaction.error);
+        };
+      } catch (error) {
+        console.error('[SuperBar] Error in incrementBookmarkUsage:', error);
+        reject(error);
+      }
     });
   } catch (error) {
     console.error('[SuperBar] Error incrementing bookmark usage:', error);
@@ -119,33 +137,49 @@ export async function getAllBookmarkUsage(): Promise<{ [url: string]: number }> 
   try {
     const db = await initializeDB();
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction([STORE_NAME], 'readonly');
-      const store = transaction.objectStore(STORE_NAME);
-      const result: { [url: string]: number } = {};
+      try {
+        const transaction = db.transaction([STORE_NAME], 'readonly');
+        const store = transaction.objectStore(STORE_NAME);
+        const result: { [url: string]: number } = {};
 
-      // Need to iterate through the store using a cursor
-      const keysRequest = store.getAllKeys();
-      keysRequest.onsuccess = () => {
-        const allKeys = keysRequest.result;
-        let processed = 0;
+        const keysRequest = (store.getAllKeys() as IDBRequest<IDBValidKey[]>);
+        keysRequest.onsuccess = () => {
+          const allKeys = keysRequest.result as (string | number)[];
+          let processed = 0;
 
-        allKeys.forEach((key) => {
-          const getRequest = store.get(key);
-          getRequest.onsuccess = () => {
-            result[key as string] = getRequest.result;
-            processed++;
-            if (processed === allKeys.length) {
-              resolve(result);
-            }
-          };
-          getRequest.onerror = () => reject(getRequest.error);
-        });
+          if (allKeys.length === 0) {
+            resolve(result);
+            return;
+          }
 
-        if (allKeys.length === 0) {
-          resolve(result);
-        }
-      };
-      keysRequest.onerror = () => reject(keysRequest.error);
+          allKeys.forEach((key: string | number) => {
+            const getRequest = store.get(key);
+            getRequest.onsuccess = () => {
+              result[String(key)] = getRequest.result ?? 0;
+              processed++;
+              if (processed === allKeys.length) {
+                resolve(result);
+              }
+            };
+            getRequest.onerror = () => {
+              console.error('[SuperBar] Error getting key:', key, getRequest.error);
+              reject(getRequest.error);
+            };
+          });
+        };
+        keysRequest.onerror = () => {
+          console.error('[SuperBar] Error getting all keys:', keysRequest.error);
+          reject(keysRequest.error);
+        };
+
+        transaction.onerror = () => {
+          console.error('[SuperBar] Transaction error in getAllBookmarkUsage:', transaction.error);
+          reject(transaction.error);
+        };
+      } catch (error) {
+        console.error('[SuperBar] Error in getAllBookmarkUsage:', error);
+        reject(error);
+      }
     });
   } catch (error) {
     console.error('[SuperBar] Error getting all bookmark usage:', error);

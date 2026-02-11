@@ -5,6 +5,8 @@
 
 import { getBookmarkUsage, incrementBookmarkUsage } from './utils';
 
+console.log('[SuperBar] Background service worker starting up...');
+
 // Initialize extension on install
 chrome.runtime.onInstalled.addListener((details) => {
   if (details.reason === 'install') {
