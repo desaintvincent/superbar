@@ -189,10 +189,11 @@
         });
       }
 
-      elem.addEventListener('mouseenter', () => {
-        selectedIndex = index;
-        highlightResult();
-      });
+      // disable hover
+      // elem.addEventListener('mouseenter', () => {
+      //   selectedIndex = index;
+      //   highlightResult();
+      // });
     });
 
     highlightResult();
