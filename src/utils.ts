@@ -57,6 +57,101 @@ export async function sendMessageToBackground(message: any): Promise<any> {
     });
   });
 }
+
+/**
+ * IndexedDB operations for bookmark usage tracking
+ */
+const DB_NAME = 'SuperBarDB';
+const DB_VERSION = 1;
+const STORE_NAME = 'bookmarkUsage';
+
+function initializeDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(request.result);
+
+    request.onupgradeneeded = (event: IDBVersionChangeEvent) => {
+      const db = (event.target as IDBOpenDBRequest).result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME);
+      }
+    };
+  });
+}
+
+export async function getBookmarkUsage(url: string): Promise<number> {
+  try {
+    const db = await initializeDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([STORE_NAME], 'readonly');
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.get(url);
+
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve(request.result ?? 0);
+    });
+  } catch (error) {
+    console.error('[SuperBar] Error getting bookmark usage:', error);
+    return 0;
+  }
+}
+
+export async function incrementBookmarkUsage(url: string): Promise<void> {
+  try {
+    const db = await initializeDB();
+    const currentCount = await getBookmarkUsage(url);
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([STORE_NAME], 'readwrite');
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.put(currentCount + 1, url);
+
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve();
+    });
+  } catch (error) {
+    console.error('[SuperBar] Error incrementing bookmark usage:', error);
+  }
+}
+
+export async function getAllBookmarkUsage(): Promise<{ [url: string]: number }> {
+  try {
+    const db = await initializeDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([STORE_NAME], 'readonly');
+      const store = transaction.objectStore(STORE_NAME);
+      const result: { [url: string]: number } = {};
+
+      // Need to iterate through the store using a cursor
+      const keysRequest = store.getAllKeys();
+      keysRequest.onsuccess = () => {
+        const allKeys = keysRequest.result;
+        let processed = 0;
+
+        allKeys.forEach((key) => {
+          const getRequest = store.get(key);
+          getRequest.onsuccess = () => {
+            result[key as string] = getRequest.result;
+            processed++;
+            if (processed === allKeys.length) {
+              resolve(result);
+            }
+          };
+          getRequest.onerror = () => reject(getRequest.error);
+        });
+
+        if (allKeys.length === 0) {
+          resolve(result);
+        }
+      };
+      keysRequest.onerror = () => reject(keysRequest.error);
+    });
+  } catch (error) {
+    console.error('[SuperBar] Error getting all bookmark usage:', error);
+    return {};
+  }
+}
 /**
  * Calculate weight for sorting bookmarks
  * Can accept multiple parameters for future expansion

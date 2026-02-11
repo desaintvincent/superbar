@@ -3,6 +3,8 @@
  * Handles extension initialization and event handling
  */
 
+import { getBookmarkUsage, incrementBookmarkUsage } from './utils';
+
 // Initialize extension on install
 chrome.runtime.onInstalled.addListener((details) => {
   if (details.reason === 'install') {
@@ -194,7 +196,7 @@ function searchBookmarks(query: string, callback: (results: any[]) => void) {
         console.log('[SuperBar Background] Bookmark path map keys:', Object.keys(bookmarkPathMap).length);
 
         // Filter bookmarks based on excluded folders and ignored bookmarks
-        const bookmarks = searchResults
+        const filteredBookmarks = searchResults
           .filter((bookmark) => {
             // Always filter out folders without URLs
             if (!bookmark.url) {
@@ -228,11 +230,13 @@ function searchBookmarks(query: string, callback: (results: any[]) => void) {
 
             // Always include bookmarks with URLs
             return true;
-          })
-          .map((bookmark) => {
+          });
+
+        // Process bookmarks asynchronously to fetch usage counts
+        Promise.all(
+          filteredBookmarks.map(async (bookmark) => {
             const relevance = calculateRelevance(query, bookmark.title || '');
-            const bookmarkUsage = config.bookmarkUsage || {};
-            const usageCount = bookmark.url ? ((bookmarkUsage[bookmark.url] || 0) as number) : 0;
+            const usageCount = bookmark.url ? (await getBookmarkUsage(bookmark.url)) : 0;
             const weight = calculateBookmarkWeight({ relevance, usageCount });
 
             return {
@@ -245,11 +249,13 @@ function searchBookmarks(query: string, callback: (results: any[]) => void) {
               weight,
             };
           })
-          .sort((a, b) => b.weight - a.weight);
+        ).then((bookmarks) => {
+          const sortedBookmarks = bookmarks.sort((a, b) => b.weight - a.weight);
 
-        // Get paths for bookmarks
-        getBookmarkPaths(bookmarks, (bookmarksWithPaths) => {
-          callback(bookmarksWithPaths);
+          // Get paths for bookmarks
+          getBookmarkPaths(sortedBookmarks, (bookmarksWithPaths) => {
+            callback(bookmarksWithPaths);
+          });
         });
       });
     });
@@ -311,16 +317,13 @@ function calculateRelevance(query: string, title: string): number {
 }
 
 // Track bookmark usage
-function trackBookmarkUsage(url: string) {
-  chrome.storage.local.get(['superbarConfig'], (result) => {
-    const config = result.superbarConfig || {};
-    const bookmarkUsage = config.bookmarkUsage || {};
-
-    bookmarkUsage[url] = (bookmarkUsage[url] || 0) + 1;
-    config.bookmarkUsage = bookmarkUsage;
-
-    chrome.storage.local.set({ superbarConfig: config }, () => {});
-  });
+async function trackBookmarkUsage(url: string) {
+  try {
+    await incrementBookmarkUsage(url);
+    console.log('[SuperBar Background] Bookmark usage incremented for:', url);
+  } catch (error) {
+    console.error('[SuperBar Background] Error tracking bookmark usage:', error);
+  }
 }
 
 console.log('[SuperBar] Background service worker loaded');
