@@ -9,6 +9,9 @@
     url: string;
     relevance: number;
     path?: string;
+    isOpenTab?: boolean;
+    tabId?: number;
+    windowId?: number;
   }
 
   let currentResults: BookmarkResult[] = [];
@@ -79,7 +82,8 @@
       case 'Enter':
         e.preventDefault();
         if (selectedIndex >= 0 && currentResults[selectedIndex]) {
-          openBookmark(currentResults[selectedIndex].url);
+          const result = currentResults[selectedIndex];
+          openBookmark(result.url, result.tabId);
           closeSearch();
         }
         break;
@@ -126,6 +130,7 @@
         const pathHtml = result.path ? `<div class="superbar-result-path">${escapeHtml(result.path)}</div>` : '';
         const usageCount = (result as any).usageCount || 0;
         const usageHtml = usageCount > 0 ? `<div class="superbar-result-usage">${usageCount}×</div>` : '';
+        const tabIndicatorHtml = result.isOpenTab ? `<div class="superbar-result-tab-indicator" title="Open tab">🔗</div>` : '';
         return `
           <div class="superbar-result ${isSelected ? 'selected' : ''}" data-index="${index}">
             <div class="superbar-result-content">
@@ -136,12 +141,13 @@
                 <div class="superbar-result-url">${escapeHtml(new URL(result.url).hostname)}</div>
               </div>
               ${usageHtml}
+              ${tabIndicatorHtml}
               <div class="superbar-result-actions">
                 <button class="superbar-action-btn" data-index="${index}" title="More actions">⋮</button>
                 <div class="superbar-action-menu" data-index="${index}" style="display: none;">
-                  <button class="superbar-action-item" data-action="delete" data-index="${index}">🗑️ Delete</button>
-                  <button class="superbar-action-item" data-action="ignore-folder" data-index="${index}">📁 Ignore Folder</button>
-                  <button class="superbar-action-item" data-action="ignore-bookmark" data-index="${index}">🚫 Ignore Bookmark</button>
+                  ${!result.isOpenTab ? `<button class="superbar-action-item" data-action="delete" data-index="${index}">🗑️ Delete</button>` : ''}
+                  ${!result.isOpenTab ? `<button class="superbar-action-item" data-action="ignore-folder" data-index="${index}">📁 Ignore Folder</button>` : ''}
+                  ${!result.isOpenTab ? `<button class="superbar-action-item" data-action="ignore-bookmark" data-index="${index}">🚫 Ignore Bookmark</button>` : ''}
                 </div>
               </div>
             </div>
@@ -183,7 +189,8 @@
             return; // Don't open bookmark if clicking actions
           }
           if (currentResults[index]) {
-            openBookmark(currentResults[index].url);
+            const result = currentResults[index];
+            openBookmark(result.url, result.tabId);
             closeSearch();
           }
         });
@@ -220,10 +227,10 @@
     selectedIndex = -1;
   }
 
-  function openBookmark(url: string) {
+  function openBookmark(url: string, tabId?: number) {
     chrome.runtime.sendMessage({
       type: 'OPEN_BOOKMARK',
-      payload: { url },
+      payload: { url, tabId },
     });
   }
 

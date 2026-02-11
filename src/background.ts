@@ -65,7 +65,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       break;
 
     case 'SEARCH_BOOKMARKS':
-      searchBookmarks(message.payload.query, (results) => {
+      searchBookmarksWithTabs(message.payload.query, (results) => {
         sendResponse({ results });
       });
       break;
@@ -76,10 +76,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // Track bookmark usage
         trackBookmarkUsage(message.payload.url);
 
-        chrome.tabs.create({ url: message.payload.url }, () => {
-          console.log('[SuperBar Background] Tab created for:', message.payload.url);
-          sendResponse({ success: true });
-        });
+        // If it's a tab (has tabId), switch to it instead of opening new tab
+        if (message.payload?.tabId) {
+          chrome.tabs.update(message.payload.tabId, { active: true }, (tab) => {
+            if (tab?.windowId) {
+              chrome.windows.update(tab.windowId, { focused: true }, () => {
+                console.log('[SuperBar Background] Switched to tab:', message.payload.tabId);
+                sendResponse({ success: true });
+              });
+            }
+          });
+        } else {
+          chrome.tabs.create({ url: message.payload.url }, () => {
+            console.log('[SuperBar Background] Tab created for:', message.payload.url);
+            sendResponse({ success: true });
+          });
+        }
       } else {
         sendResponse({ success: false });
       }
@@ -158,6 +170,62 @@ function migrateConfig(config: any): any {
     chrome.storage.local.set({ superbarConfig: config });
   }
   return config;
+}
+
+// Search through bookmarks and open tabs, merging results with duplicates removed
+function searchBookmarksWithTabs(query: string, callback: (results: any[]) => void) {
+  // First get all open tabs
+  chrome.tabs.query({}, (tabs) => {
+    // Search bookmarks
+    searchBookmarks(query, (bookmarkResults) => {
+      const urlToTabMap: { [url: string]: any } = {};
+
+      // Create a map of URLs to tabs for quick lookup
+      tabs.forEach((tab) => {
+        if (tab.url && !tab.url.startsWith('chrome://')) {
+          urlToTabMap[tab.url] = tab;
+        }
+      });
+
+      // Find which bookmark results are already open tabs
+      const bookmarksWithTabInfo = bookmarkResults.map((result) => {
+        const tab = urlToTabMap[result.url];
+        return {
+          ...result,
+          isOpenTab: !!tab,
+          tabId: tab?.id,
+          windowId: tab?.windowId,
+        };
+      });
+
+      // Find open tabs that don't have a bookmark
+      const bookmarkUrls = new Set(bookmarkResults.map((r) => r.url));
+      const openTabsNotInBookmarks = tabs
+        .filter((tab) => tab.url && !tab.url.startsWith('chrome://') && !bookmarkUrls.has(tab.url))
+        .map((tab) => {
+          const relevance = calculateRelevance(query, tab.title || '');
+          const weight = calculateBookmarkWeight({ relevance, usageCount: 0 });
+          return {
+            title: tab.title || 'Untitled Tab',
+            url: tab.url,
+            tabId: tab.id,
+            windowId: tab.windowId,
+            isOpenTab: true,
+            relevance,
+            weight,
+            path: undefined,
+          };
+        });
+
+      // Merge results: bookmarks with tab info + tabs not in bookmarks
+      const mergedResults = [...bookmarksWithTabInfo, ...openTabsNotInBookmarks];
+
+      // Sort by weight (relevance + usage)
+      const sortedResults = mergedResults.sort((a, b) => b.weight - a.weight);
+
+      callback(sortedResults);
+    });
+  });
 }
 
 // Search through all bookmarks
