@@ -91,6 +91,42 @@
         color: #9ca3af;
       }
 
+      #superbar-options {
+        padding: 8px 16px;
+        background: #111827;
+        border-bottom: 1px solid #374151;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+      }
+
+      .superbar-option {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        color: #d1d5db;
+      }
+
+      .superbar-option input[type="checkbox"] {
+        cursor: pointer;
+        width: 16px;
+        height: 16px;
+      }
+
+      .superbar-option label {
+        cursor: pointer;
+        user-select: none;
+      }
+
+      .superbar-option-shortcut {
+        font-size: 11px;
+        color: #6b7280;
+        margin-left: 4px;
+        font-family: 'Monaco', 'Menlo', monospace;
+      }
+
       #superbar-results {
         overflow-y: auto;
         flex: 1;
@@ -275,6 +311,13 @@
             autocomplete="off"
           />
           <span id="superbar-close">×</span>
+        </div>
+        <div id="superbar-options">
+          <div class="superbar-option">
+            <input type="checkbox" id="superbar-option-tabs" checked />
+            <label for="superbar-option-tabs">Open Tabs</label>
+            <span class="superbar-option-shortcut">Ctrl+T</span>
+          </div>
         </div>
         <div id="superbar-results"></div>
       </div>

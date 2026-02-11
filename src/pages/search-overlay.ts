@@ -16,10 +16,14 @@
 
   let currentResults: BookmarkResult[] = [];
   let selectedIndex = -1;
+  let searchOptions = {
+    includeTabs: true,
+  };
 
   document.addEventListener('DOMContentLoaded', () => {
     const input = document.getElementById('superbar-input') as HTMLInputElement;
     const closeBtn = document.getElementById('superbar-close');
+    const tabsCheckbox = document.getElementById('superbar-option-tabs') as HTMLInputElement;
 
     if (input) {
       input.focus();
@@ -29,6 +33,13 @@
     if (closeBtn) {
       closeBtn.addEventListener('click', () => {
         closeSearch();
+      });
+    }
+
+    if (tabsCheckbox) {
+      tabsCheckbox.addEventListener('change', (e) => {
+        searchOptions.includeTabs = (e.target as HTMLInputElement).checked;
+        performSearch((document.getElementById('superbar-input') as HTMLInputElement).value);
       });
     }
 
@@ -61,6 +72,21 @@
   }
 
   function handleKeydown(e: KeyboardEvent) {
+    // Handle 'Ctrl+T' (or 'Cmd+T' on Mac) to toggle tabs
+    const isMac = navigator.userAgent.includes('Mac');
+    const isToggleShortcut = isMac ? (e.metaKey && e.key.toLowerCase() === 't') : (e.ctrlKey && e.key.toLowerCase() === 't');
+
+    if (isToggleShortcut && !e.shiftKey && !e.altKey) {
+      e.preventDefault();
+      const tabsCheckbox = document.getElementById('superbar-option-tabs') as HTMLInputElement;
+      if (tabsCheckbox) {
+        searchOptions.includeTabs = !searchOptions.includeTabs;
+        tabsCheckbox.checked = searchOptions.includeTabs;
+        performSearch((document.getElementById('superbar-input') as HTMLInputElement).value);
+      }
+      return;
+    }
+
     switch (e.key) {
       case 'Escape':
         e.preventDefault();
@@ -99,7 +125,7 @@
     chrome.runtime.sendMessage(
       {
         type: 'SEARCH_BOOKMARKS',
-        payload: { query },
+        payload: { query, options: searchOptions },
       },
       (response) => {
         currentResults = response?.results || [];

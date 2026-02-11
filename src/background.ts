@@ -65,7 +65,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       break;
 
     case 'SEARCH_BOOKMARKS':
-      searchBookmarksWithTabs(message.payload.query, (results) => {
+      const options = message.payload?.options || { includeTabs: true };
+      searchBookmarksWithTabs(message.payload.query, options, (results) => {
         sendResponse({ results });
       });
       break;
@@ -173,11 +174,21 @@ function migrateConfig(config: any): any {
 }
 
 // Search through bookmarks and open tabs, merging results with duplicates removed
-function searchBookmarksWithTabs(query: string, callback: (results: any[]) => void) {
-  // First get all open tabs
-  chrome.tabs.query({}, (tabs) => {
-    // Search bookmarks
-    searchBookmarks(query, (bookmarkResults) => {
+function searchBookmarksWithTabs(
+  query: string,
+  options: { includeTabs: boolean },
+  callback: (results: any[]) => void
+) {
+  // Search bookmarks first
+  searchBookmarks(query, (bookmarkResults) => {
+    // If tabs are not included in search options, return only bookmarks
+    if (!options.includeTabs) {
+      callback(bookmarkResults);
+      return;
+    }
+
+    // Otherwise, get all open tabs and merge with bookmarks
+    chrome.tabs.query({}, (tabs) => {
       const urlToTabMap: { [url: string]: any } = {};
 
       // Create a map of URLs to tabs for quick lookup
