@@ -254,10 +254,14 @@ function searchBookmarksWithTabs(
           searchHistory(query, bookmarkUrls, (historyResults) => {
             allResults = [...allResults, ...historyResults];
             const finalResults = allResults.sort((a, b) => b.weight - a.weight);
+            console.log('[SuperBar] Final results before sorting:', allResults.map(r => ({ title: r.title, weight: r.weight, relevance: r.relevance, usageCount: r.usageCount })));
+            console.log('[SuperBar] Final results after sorting:', finalResults.map(r => ({ title: r.title, weight: r.weight, relevance: r.relevance, usageCount: r.usageCount })));
             callback(finalResults);
           });
         } else {
           const finalResults = allResults.sort((a, b) => b.weight - a.weight);
+          console.log('[SuperBar] Final results before sorting:', allResults.map(r => ({ title: r.title, weight: r.weight, relevance: r.relevance, usageCount: r.usageCount })));
+          console.log('[SuperBar] Final results after sorting:', finalResults.map(r => ({ title: r.title, weight: r.weight, relevance: r.relevance, usageCount: r.usageCount })));
           callback(finalResults);
         }
       });

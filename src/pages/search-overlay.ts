@@ -178,7 +178,10 @@
         const faviconUrl = `https://www.google.com/s2/favicons?sz=16&domain=${new URL(result.url).hostname}`;
         const pathHtml = result.path ? `<div class="superbar-result-path">${escapeHtml(result.path)}</div>` : '';
         const usageCount = (result as any).usageCount || 0;
+        const weight = ((result as any).weight || 0).toFixed(2);
+        const relevance = ((result as any).relevance || 0).toFixed(2);
         const usageHtml = usageCount > 0 ? `<div class="superbar-result-usage">${usageCount}×</div>` : '';
+        const debugHtml = `<div class="superbar-result-debug" title="Weight: ${weight}, Relevance: ${relevance}">W:${weight}</div>`;
         const tabIndicatorHtml = result.isOpenTab ? `<div class="superbar-result-tab-indicator" title="Open tab">🔗</div>` : '';
         const historyIndicatorHtml = result.isHistory ? `<div class="superbar-result-history-indicator" title="History">⏱️</div>` : '';
         return `
@@ -191,6 +194,7 @@
                 <div class="superbar-result-url">${escapeHtml(new URL(result.url).hostname)}</div>
               </div>
               ${usageHtml}
+              ${debugHtml}
               ${tabIndicatorHtml}
               ${historyIndicatorHtml}
               <div class="superbar-result-actions">
