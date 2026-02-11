@@ -71,7 +71,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     case 'OPEN_BOOKMARK':
       if (message.payload?.url) {
-        console.log('[SuperBar Background] OPEN_BOOKMARK received for:', message.payload.url);
         // Track bookmark usage
         trackBookmarkUsage(message.payload.url);
 
@@ -80,14 +79,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           chrome.tabs.update(message.payload.tabId, { active: true }, (tab) => {
             if (tab?.windowId) {
               chrome.windows.update(tab.windowId, { focused: true }, () => {
-                console.log('[SuperBar Background] Switched to tab:', message.payload.tabId);
                 sendResponse({ success: true });
               });
             }
           });
         } else {
           chrome.tabs.create({ url: message.payload.url }, () => {
-            console.log('[SuperBar Background] Tab created for:', message.payload.url);
             sendResponse({ success: true });
           });
         }
@@ -101,11 +98,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         chrome.bookmarks.search({ url: message.payload.url }, (results) => {
           if (results.length > 0) {
             chrome.bookmarks.remove(results[0].id, () => {
-              console.log('[SuperBar] Bookmark deleted:', results[0].id);
               sendResponse({ success: true });
             });
           } else {
-            console.log('[SuperBar] Bookmark not found:', message.payload.url);
             sendResponse({ success: false });
           }
         });
@@ -177,15 +172,12 @@ function searchBookmarksWithTabs(
   options: { includeTabs: boolean; includeHistory: boolean },
   callback: (results: any[]) => void
 ) {
-  console.log('[SuperBar Background] searchBookmarksWithTabs called with options:', options);
 
   // Search bookmarks first
   searchBookmarks(query, (bookmarkResults) => {
-    console.log('[SuperBar Background] Bookmark search returned:', bookmarkResults.length, 'results');
 
     // If both tabs and history are disabled, return only bookmarks
     if (!options.includeTabs && !options.includeHistory) {
-      console.log('[SuperBar Background] Both tabs and history disabled, returning bookmarks only');
       callback(bookmarkResults);
       return;
     }
@@ -196,7 +188,6 @@ function searchBookmarksWithTabs(
 
     // Handle tabs
     if (options.includeTabs) {
-      console.log('[SuperBar Background] Including tabs in search');
       chrome.tabs.query({}, (tabs) => {
         const urlToTabMap: { [url: string]: any } = {};
 
@@ -251,28 +242,21 @@ function searchBookmarksWithTabs(
 
         // Handle history
         if (options.includeHistory) {
-          console.log('[SuperBar Background] Including history in search');
           searchHistory(query, bookmarkUrls, (historyResults) => {
-            console.log('[SuperBar Background] History search returned:', historyResults.length, 'results');
             allResults = [...allResults, ...historyResults];
             const finalResults = allResults.sort((a, b) => b.weight - a.weight);
-            console.log('[SuperBar Background] Final results count:', finalResults.length);
             callback(finalResults);
           });
         } else {
           const finalResults = allResults.sort((a, b) => b.weight - a.weight);
-          console.log('[SuperBar Background] Final results count (no history):', finalResults.length);
           callback(finalResults);
         }
       });
     } else if (options.includeHistory) {
       // Only history (no tabs)
-      console.log('[SuperBar Background] Including history only (no tabs)');
       searchHistory(query, bookmarkUrls, (historyResults) => {
-        console.log('[SuperBar Background] History search returned:', historyResults.length, 'results');
         allResults = [...allResults, ...historyResults];
         const finalResults = allResults.sort((a, b) => b.weight - a.weight);
-        console.log('[SuperBar Background] Final results count:', finalResults.length);
         callback(finalResults);
       });
     }
@@ -290,13 +274,11 @@ function searchHistory(query: string, excludeUrls: Set<string>, callback: (resul
 
   // Don't search history with empty query - allow it to return all history
   if (!query || query.trim() === '') {
-    console.log('[History] Empty query - searching all history');
     // Search with empty string to get recent history
     searchHistoryItems('', excludeUrls, callback);
     return;
   }
 
-  console.log('[History] Search query:', query);
   searchHistoryItems(query, excludeUrls, callback);
 }
 
@@ -317,9 +299,7 @@ function searchHistoryItems(query: string, excludeUrls: Set<string>, callback: (
   // So we need to search with empty string to get all/recent items, then filter manually
   // startTime: 0 means from the beginning of time (defaults to 24 hours if not specified)
   chrome.history.search({ text: query, maxResults: 25, startTime: 0 }, (historyItems) => {
-    console.log('====> searchCallback called with', historyItems?.length || 0, 'items for query:', query);
     if (callbackCalled) {
-      console.log('====> return withour results because callback already called');
       return;
     }
     clearTimeout(timeout);
@@ -331,15 +311,12 @@ function searchHistoryItems(query: string, excludeUrls: Set<string>, callback: (
       return;
     }
 
-    console.log('[History] Got', historyItems?.length || 0, 'history items from API');
 
     if (!historyItems || historyItems.length === 0) {
-      console.log('[History] No history items found');
       callback([]);
       return;
     }
 
-    console.log('[History] Raw items sample:', historyItems.slice(0, 5).map(i => ({ title: i.title, url: i.url })));
 
     // Filter results by matching query against both title and URL
     let filteredItems = historyItems;
@@ -350,7 +327,6 @@ function searchHistoryItems(query: string, excludeUrls: Set<string>, callback: (
         const urlMatch = (item.url || '').toLowerCase().includes(lowerQuery);
         return titleMatch || urlMatch;
       });
-      console.log('[History] After filtering by query "' + query + '":', filteredItems.length, 'items');
     }
 
     // Map and filter history results
@@ -376,7 +352,6 @@ function searchHistoryItems(query: string, excludeUrls: Set<string>, callback: (
       })
       .sort((a, b) => b.weight - a.weight);
 
-    console.log('[History] Final results:', historyResults.length);
     callback(historyResults);
   })
 }
