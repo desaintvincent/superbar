@@ -297,6 +297,15 @@
         align-items: center;
         color: #10b981;
       }
+
+      .superbar-result-history-indicator {
+        font-size: 13px;
+        margin-left: 8px;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        color: #f59e0b;
+      }
     </style>
   </head>
   <body>
@@ -317,6 +326,11 @@
             <input type="checkbox" id="superbar-option-tabs" checked />
             <label for="superbar-option-tabs">Open Tabs</label>
             <span class="superbar-option-shortcut">Ctrl+T</span>
+          </div>
+          <div class="superbar-option">
+            <input type="checkbox" id="superbar-option-history" />
+            <label for="superbar-option-history">History</label>
+            <span class="superbar-option-shortcut">Ctrl+H</span>
           </div>
         </div>
         <div id="superbar-results"></div>

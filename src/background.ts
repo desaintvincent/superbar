@@ -47,8 +47,6 @@ chrome.action.onClicked.addListener(() => {
   });
 });
 
-// ...existing code...
-
 // Listen for messages from content scripts and settings pages
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   switch (message.type) {
@@ -65,7 +63,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       break;
 
     case 'SEARCH_BOOKMARKS':
-      const options = message.payload?.options || { includeTabs: true };
+      const options = message.payload?.options || { includeTabs: true, includeHistory: false };
       searchBookmarksWithTabs(message.payload.query, options, (results) => {
         sendResponse({ results });
       });
@@ -176,67 +174,211 @@ function migrateConfig(config: any): any {
 // Search through bookmarks and open tabs, merging results with duplicates removed
 function searchBookmarksWithTabs(
   query: string,
-  options: { includeTabs: boolean },
+  options: { includeTabs: boolean; includeHistory: boolean },
   callback: (results: any[]) => void
 ) {
+  console.log('[SuperBar Background] searchBookmarksWithTabs called with options:', options);
+
   // Search bookmarks first
   searchBookmarks(query, (bookmarkResults) => {
-    // If tabs are not included in search options, return only bookmarks
-    if (!options.includeTabs) {
+    console.log('[SuperBar Background] Bookmark search returned:', bookmarkResults.length, 'results');
+
+    // If both tabs and history are disabled, return only bookmarks
+    if (!options.includeTabs && !options.includeHistory) {
+      console.log('[SuperBar Background] Both tabs and history disabled, returning bookmarks only');
       callback(bookmarkResults);
       return;
     }
 
-    // Otherwise, get all open tabs and merge with bookmarks
-    chrome.tabs.query({}, (tabs) => {
-      const urlToTabMap: { [url: string]: any } = {};
+    // Prepare set of URLs to exclude duplicates
+    const bookmarkUrls = new Set(bookmarkResults.map((r) => r.url));
+    let allResults = [...bookmarkResults];
 
-      // Create a map of URLs to tabs for quick lookup
-      tabs.forEach((tab) => {
-        if (tab.url && !tab.url.startsWith('chrome://')) {
-          urlToTabMap[tab.url] = tab;
-        }
-      });
+    // Handle tabs
+    if (options.includeTabs) {
+      console.log('[SuperBar Background] Including tabs in search');
+      chrome.tabs.query({}, (tabs) => {
+        const urlToTabMap: { [url: string]: any } = {};
 
-      // Find which bookmark results are already open tabs
-      const bookmarksWithTabInfo = bookmarkResults.map((result) => {
-        const tab = urlToTabMap[result.url];
-        return {
-          ...result,
-          isOpenTab: !!tab,
-          tabId: tab?.id,
-          windowId: tab?.windowId,
-        };
-      });
+        // Create a map of URLs to tabs for quick lookup
+        tabs.forEach((tab) => {
+          if (tab.url && !tab.url.startsWith('chrome://')) {
+            urlToTabMap[tab.url] = tab;
+          }
+        });
 
-      // Find open tabs that don't have a bookmark
-      const bookmarkUrls = new Set(bookmarkResults.map((r) => r.url));
-      const openTabsNotInBookmarks = tabs
-        .filter((tab) => tab.url && !tab.url.startsWith('chrome://') && !bookmarkUrls.has(tab.url))
-        .map((tab) => {
-          const relevance = calculateRelevance(query, tab.title || '');
-          const weight = calculateBookmarkWeight({ relevance, usageCount: 0 });
+        // Find which bookmark results are already open tabs
+        allResults = allResults.map((result) => {
+          const tab = urlToTabMap[result.url];
           return {
-            title: tab.title || 'Untitled Tab',
-            url: tab.url,
-            tabId: tab.id,
-            windowId: tab.windowId,
-            isOpenTab: true,
-            relevance,
-            weight,
-            path: undefined,
+            ...result,
+            isOpenTab: !!tab,
+            tabId: tab?.id,
+            windowId: tab?.windowId,
           };
         });
 
-      // Merge results: bookmarks with tab info + tabs not in bookmarks
-      const mergedResults = [...bookmarksWithTabInfo, ...openTabsNotInBookmarks];
+        // Find open tabs that don't have a bookmark
+        const openTabsNotInBookmarks = tabs
+          .filter((tab) => tab.url && !tab.url.startsWith('chrome://') && !bookmarkUrls.has(tab.url))
+          .map((tab) => {
+            const titleRelevance = calculateRelevance(query, tab.title || '');
+            const urlRelevance = calculateRelevance(query, tab.url || '');
+            // Use the higher of the two relevances
+            const relevance = Math.max(titleRelevance, urlRelevance);
+            const weight = calculateBookmarkWeight({ relevance, usageCount: 0 });
+            return {
+              title: tab.title || 'Untitled Tab',
+              url: tab.url,
+              tabId: tab.id,
+              windowId: tab.windowId,
+              isOpenTab: true,
+              relevance,
+              weight,
+              path: undefined,
+            };
+          })
+          .filter((tab) => tab.relevance > 0); // Only include tabs that match the search query
 
-      // Sort by weight (relevance + usage)
-      const sortedResults = mergedResults.sort((a, b) => b.weight - a.weight);
+        allResults = [...allResults, ...openTabsNotInBookmarks];
 
-      callback(sortedResults);
-    });
+        // Add open tabs to excluded URLs
+        tabs.forEach((tab) => {
+          if (tab.url && !tab.url.startsWith('chrome://')) {
+            bookmarkUrls.add(tab.url);
+          }
+        });
+
+        // Handle history
+        if (options.includeHistory) {
+          console.log('[SuperBar Background] Including history in search');
+          searchHistory(query, bookmarkUrls, (historyResults) => {
+            console.log('[SuperBar Background] History search returned:', historyResults.length, 'results');
+            allResults = [...allResults, ...historyResults];
+            const finalResults = allResults.sort((a, b) => b.weight - a.weight);
+            console.log('[SuperBar Background] Final results count:', finalResults.length);
+            callback(finalResults);
+          });
+        } else {
+          const finalResults = allResults.sort((a, b) => b.weight - a.weight);
+          console.log('[SuperBar Background] Final results count (no history):', finalResults.length);
+          callback(finalResults);
+        }
+      });
+    } else if (options.includeHistory) {
+      // Only history (no tabs)
+      console.log('[SuperBar Background] Including history only (no tabs)');
+      searchHistory(query, bookmarkUrls, (historyResults) => {
+        console.log('[SuperBar Background] History search returned:', historyResults.length, 'results');
+        allResults = [...allResults, ...historyResults];
+        const finalResults = allResults.sort((a, b) => b.weight - a.weight);
+        console.log('[SuperBar Background] Final results count:', finalResults.length);
+        callback(finalResults);
+      });
+    }
   });
+}
+
+// Search browser history
+function searchHistory(query: string, excludeUrls: Set<string>, callback: (results: any[]) => void) {
+  // Check if chrome.history API is available
+  if (!chrome.history || !chrome.history.search) {
+    console.error('[History] chrome.history API not available');
+    callback([]);
+    return;
+  }
+
+  // Don't search history with empty query - allow it to return all history
+  if (!query || query.trim() === '') {
+    console.log('[History] Empty query - searching all history');
+    // Search with empty string to get recent history
+    searchHistoryItems('', excludeUrls, callback);
+    return;
+  }
+
+  console.log('[History] Search query:', query);
+  searchHistoryItems(query, excludeUrls, callback);
+}
+
+// Helper function to search history items
+function searchHistoryItems(query: string, excludeUrls: Set<string>, callback: (results: any[]) => void) {
+  let callbackCalled = false;
+
+  // Set a timeout in case the API doesn't respond
+  const timeout = setTimeout(() => {
+    if (!callbackCalled) {
+      console.warn('[History] History search timed out');
+      callbackCalled = true;
+      callback([]);
+    }
+  }, 5000);
+
+  // chrome.history.search() searches in URL, not title
+  // So we need to search with empty string to get all/recent items, then filter manually
+  // startTime: 0 means from the beginning of time (defaults to 24 hours if not specified)
+  chrome.history.search({ text: query, maxResults: 25, startTime: 0 }, (historyItems) => {
+    console.log('====> searchCallback called with', historyItems?.length || 0, 'items for query:', query);
+    if (callbackCalled) {
+      console.log('====> return withour results because callback already called');
+      return;
+    }
+    clearTimeout(timeout);
+    callbackCalled = true;
+
+    if (chrome.runtime.lastError) {
+      console.error('[History] Search error:', chrome.runtime.lastError);
+      callback([]);
+      return;
+    }
+
+    console.log('[History] Got', historyItems?.length || 0, 'history items from API');
+
+    if (!historyItems || historyItems.length === 0) {
+      console.log('[History] No history items found');
+      callback([]);
+      return;
+    }
+
+    console.log('[History] Raw items sample:', historyItems.slice(0, 5).map(i => ({ title: i.title, url: i.url })));
+
+    // Filter results by matching query against both title and URL
+    let filteredItems = historyItems;
+    if (query && query.trim() !== '') {
+      const lowerQuery = query.toLowerCase();
+      filteredItems = historyItems.filter((item) => {
+        const titleMatch = (item.title || '').toLowerCase().includes(lowerQuery);
+        const urlMatch = (item.url || '').toLowerCase().includes(lowerQuery);
+        return titleMatch || urlMatch;
+      });
+      console.log('[History] After filtering by query "' + query + '":', filteredItems.length, 'items');
+    }
+
+    // Map and filter history results
+    const historyResults = filteredItems
+      .filter((item) => {
+        const isValid = item.url && !item.url.startsWith('chrome://') && !excludeUrls.has(item.url);
+        return isValid;
+      })
+      .map((item) => {
+        const titleRelevance = calculateRelevance(query, item.title || '');
+        const urlRelevance = calculateRelevance(query, item.url || '');
+        const relevance = Math.max(titleRelevance, urlRelevance);
+        const weight = calculateBookmarkWeight({ relevance, usageCount: 0 });
+
+        return {
+          title: item.title || item.url || 'History',
+          url: item.url!,
+          isHistory: true,
+          relevance,
+          weight,
+          path: undefined,
+        };
+      })
+      .sort((a, b) => b.weight - a.weight);
+
+    console.log('[History] Final results:', historyResults.length);
+    callback(historyResults);
+  })
 }
 
 // Search through all bookmarks
@@ -247,8 +389,6 @@ function searchBookmarks(query: string, callback: (results: any[]) => void) {
     config = migrateConfig(config);
     const excludedFolders = (config.excludedFolders || []) as string[][];
     const ignoredBookmarks = (config.ignoredBookmarks || []) as string[];
-
-    console.log('[SuperBar Background] Search config:', { excludedFolders, ignoredBookmarks });
 
     chrome.bookmarks.search(query, (searchResults) => {
       // First, build the complete path map for all bookmarks
@@ -272,8 +412,6 @@ function searchBookmarks(query: string, callback: (results: any[]) => void) {
 
         buildPathMap(bookmarkTreeNodes);
 
-        console.log('[SuperBar Background] Bookmark path map keys:', Object.keys(bookmarkPathMap).length);
-
         // Filter bookmarks based on excluded folders and ignored bookmarks
         const filteredBookmarks = searchResults
           .filter((bookmark) => {
@@ -284,25 +422,19 @@ function searchBookmarks(query: string, callback: (results: any[]) => void) {
 
             // Check if this bookmark is in the ignored list
             if (ignoredBookmarks.includes(bookmark.url)) {
-              console.log('[SuperBar Background] Skipping ignored bookmark:', bookmark.title);
               return false;
             }
 
             // Get the full path for this bookmark
             const fullPath = bookmarkPathMap[bookmark.id] || [];
-            console.log('[SuperBar Background] Checking bookmark:', bookmark.title, 'Path:', fullPath);
 
             // Check if the bookmark's path is within any excluded folder
             for (const excludedFolder of excludedFolders) {
               // Build the full excluded path with "Bookmarks" prefix
               const fullExcludedPath = ['Bookmarks', ...excludedFolder];
 
-              console.log('[SuperBar Background] Comparing path array', fullPath, 'with excluded', fullExcludedPath);
-              console.log('[SuperBar Background] isPathInFolder result:', isPathInFolder(fullPath, fullExcludedPath));
-
               // Check if bookmark is in the excluded folder or its subfolders
               if (isPathInFolder(fullPath, fullExcludedPath)) {
-                console.log('[SuperBar Background] Excluding bookmark:', bookmark.title, 'because path', fullPath, 'is in excluded folder', fullExcludedPath);
                 return false;
               }
             }
@@ -399,7 +531,6 @@ function calculateRelevance(query: string, title: string): number {
 async function trackBookmarkUsage(url: string) {
   try {
     await incrementBookmarkUsage(url);
-    console.log('[SuperBar Background] Bookmark usage incremented for:', url);
   } catch (error) {
     console.error('[SuperBar Background] Error tracking bookmark usage:', error);
   }

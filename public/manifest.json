@@ -7,7 +7,9 @@
     "storage",
     "bookmarks",
     "commands",
-    "windows"
+    "windows",
+    "tabs",
+    "history"
   ],
   "background": {
     "service_worker": "background.js"

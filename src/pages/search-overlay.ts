@@ -10,6 +10,7 @@
     relevance: number;
     path?: string;
     isOpenTab?: boolean;
+    isHistory?: boolean;
     tabId?: number;
     windowId?: number;
   }
@@ -18,12 +19,14 @@
   let selectedIndex = -1;
   let searchOptions = {
     includeTabs: true,
+    includeHistory: false,
   };
 
   document.addEventListener('DOMContentLoaded', () => {
     const input = document.getElementById('superbar-input') as HTMLInputElement;
     const closeBtn = document.getElementById('superbar-close');
     const tabsCheckbox = document.getElementById('superbar-option-tabs') as HTMLInputElement;
+    const historyCheckbox = document.getElementById('superbar-option-history') as HTMLInputElement;
 
     if (input) {
       input.focus();
@@ -39,6 +42,13 @@
     if (tabsCheckbox) {
       tabsCheckbox.addEventListener('change', (e) => {
         searchOptions.includeTabs = (e.target as HTMLInputElement).checked;
+        performSearch((document.getElementById('superbar-input') as HTMLInputElement).value);
+      });
+    }
+
+    if (historyCheckbox) {
+      historyCheckbox.addEventListener('change', (e) => {
+        searchOptions.includeHistory = (e.target as HTMLInputElement).checked;
         performSearch((document.getElementById('superbar-input') as HTMLInputElement).value);
       });
     }
@@ -74,14 +84,26 @@
   function handleKeydown(e: KeyboardEvent) {
     // Handle 'Ctrl+T' (or 'Cmd+T' on Mac) to toggle tabs
     const isMac = navigator.userAgent.includes('Mac');
-    const isToggleShortcut = isMac ? (e.metaKey && e.key.toLowerCase() === 't') : (e.ctrlKey && e.key.toLowerCase() === 't');
+    const isToggleTabsShortcut = isMac ? (e.metaKey && e.key.toLowerCase() === 't') : (e.ctrlKey && e.key.toLowerCase() === 't');
+    const isToggleHistoryShortcut = isMac ? (e.metaKey && e.key.toLowerCase() === 'h') : (e.ctrlKey && e.key.toLowerCase() === 'h');
 
-    if (isToggleShortcut && !e.shiftKey && !e.altKey) {
+    if (isToggleTabsShortcut && !e.shiftKey && !e.altKey) {
       e.preventDefault();
       const tabsCheckbox = document.getElementById('superbar-option-tabs') as HTMLInputElement;
       if (tabsCheckbox) {
         searchOptions.includeTabs = !searchOptions.includeTabs;
         tabsCheckbox.checked = searchOptions.includeTabs;
+        performSearch((document.getElementById('superbar-input') as HTMLInputElement).value);
+      }
+      return;
+    }
+
+    if (isToggleHistoryShortcut && !e.shiftKey && !e.altKey) {
+      e.preventDefault();
+      const historyCheckbox = document.getElementById('superbar-option-history') as HTMLInputElement;
+      if (historyCheckbox) {
+        searchOptions.includeHistory = !searchOptions.includeHistory;
+        historyCheckbox.checked = searchOptions.includeHistory;
         performSearch((document.getElementById('superbar-input') as HTMLInputElement).value);
       }
       return;
@@ -157,6 +179,7 @@
         const usageCount = (result as any).usageCount || 0;
         const usageHtml = usageCount > 0 ? `<div class="superbar-result-usage">${usageCount}×</div>` : '';
         const tabIndicatorHtml = result.isOpenTab ? `<div class="superbar-result-tab-indicator" title="Open tab">🔗</div>` : '';
+        const historyIndicatorHtml = result.isHistory ? `<div class="superbar-result-history-indicator" title="History">⏱️</div>` : '';
         return `
           <div class="superbar-result ${isSelected ? 'selected' : ''}" data-index="${index}">
             <div class="superbar-result-content">
@@ -168,12 +191,13 @@
               </div>
               ${usageHtml}
               ${tabIndicatorHtml}
+              ${historyIndicatorHtml}
               <div class="superbar-result-actions">
                 <button class="superbar-action-btn" data-index="${index}" title="More actions">⋮</button>
                 <div class="superbar-action-menu" data-index="${index}" style="display: none;">
-                  ${!result.isOpenTab ? `<button class="superbar-action-item" data-action="delete" data-index="${index}">🗑️ Delete</button>` : ''}
-                  ${!result.isOpenTab ? `<button class="superbar-action-item" data-action="ignore-folder" data-index="${index}">📁 Ignore Folder</button>` : ''}
-                  ${!result.isOpenTab ? `<button class="superbar-action-item" data-action="ignore-bookmark" data-index="${index}">🚫 Ignore Bookmark</button>` : ''}
+                  ${!result.isOpenTab && !result.isHistory ? `<button class="superbar-action-item" data-action="delete" data-index="${index}">🗑️ Delete</button>` : ''}
+                  ${!result.isOpenTab && !result.isHistory ? `<button class="superbar-action-item" data-action="ignore-folder" data-index="${index}">📁 Ignore Folder</button>` : ''}
+                  ${!result.isOpenTab && !result.isHistory ? `<button class="superbar-action-item" data-action="ignore-bookmark" data-index="${index}">🚫 Ignore Bookmark</button>` : ''}
                 </div>
               </div>
             </div>
