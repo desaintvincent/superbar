@@ -23,6 +23,7 @@
   };
 
   document.addEventListener('DOMContentLoaded', () => {
+    console.log('====> dom init');
     const input = document.getElementById('superbar-input') as HTMLInputElement;
     const closeBtn = document.getElementById('superbar-close');
     const tabsCheckbox = document.getElementById('superbar-option-tabs') as HTMLInputElement;
@@ -56,20 +57,20 @@
     document.addEventListener('keydown', handleKeydown);
 
   });
-
-  window.addEventListener("blur", () => {
-    closeSearch();
-  });
-
-// Fires when the page is being unloaded / put into BFCache-like lifecycle
-  window.addEventListener("pagehide", () => {
-    closeSearch();
-  });
-
-// Extra safety on some platforms
-  window.addEventListener("beforeunload", () => {
-    closeSearch();
-  });
+// @todo put back latter
+//   window.addEventListener("blur", () => {
+//     closeSearch();
+//   });
+//
+// // Fires when the page is being unloaded / put into BFCache-like lifecycle
+//   window.addEventListener("pagehide", () => {
+//     closeSearch();
+//   });
+//
+// // Extra safety on some platforms
+//   window.addEventListener("beforeunload", () => {
+//     closeSearch();
+//   });
 
   function handleSearch(e: Event) {
     const query = (e.target as HTMLInputElement).value;
@@ -302,12 +303,24 @@
     switch (action) {
       case 'delete':
         if (confirm(`Delete bookmark: ${bookmark.title}?`)) {
-          chrome.bookmarks.search({ url: bookmark.url }, (results) => {
-            if (results.length > 0) {
-              chrome.bookmarks.remove(results[0].id, () => {
-                console.log('[SuperBar] Bookmark deleted');
+          // Search for bookmark by title (more reliable than URL)
+          chrome.bookmarks.search({ title: bookmark.title }, (results) => {
+            // Find the exact match by URL since multiple bookmarks can have same title
+            const exactMatch = results.find((b) => b.url === bookmark.url);
+            console.log('====> exactMatch', exactMatch);
+            if (exactMatch) {
+              chrome.bookmarks.remove(exactMatch.id, () => {
+                console.log('[SuperBar] Bookmark deleted:', bookmark.title);
                 performSearch((document.getElementById('superbar-input') as HTMLInputElement).value);
               });
+            } else if (results.length > 0) {
+              // Fallback to first result if exact match not found
+              chrome.bookmarks.remove(results[0].id, () => {
+                console.log('[SuperBar] Bookmark deleted:', bookmark.title);
+                performSearch((document.getElementById('superbar-input') as HTMLInputElement).value);
+              });
+            } else {
+              console.error('[SuperBar] Bookmark not found for deletion');
             }
           });
         }

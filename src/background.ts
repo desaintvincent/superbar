@@ -94,13 +94,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       break;
 
     case 'DELETE_BOOKMARK':
-      if (message.payload?.url) {
-        chrome.bookmarks.search({ url: message.payload.url }, (results) => {
-          if (results.length > 0) {
-            chrome.bookmarks.remove(results[0].id, () => {
+      if (message.payload?.url && message.payload?.title) {
+        // Search by title first (more reliable)
+        chrome.bookmarks.search({ title: message.payload.title }, (results) => {
+          // Find exact match by URL
+          const exactMatch = results.find((b) => b.url === message.payload.url);
+          const bookmarkToDelete = exactMatch || results[0];
+
+          if (bookmarkToDelete) {
+            chrome.bookmarks.remove(bookmarkToDelete.id, () => {
+              console.log('[SuperBar] Bookmark deleted via message:', message.payload.title);
               sendResponse({ success: true });
             });
           } else {
+            console.error('[SuperBar] Bookmark not found for deletion');
             sendResponse({ success: false });
           }
         });
