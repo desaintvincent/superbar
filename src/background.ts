@@ -25,28 +25,32 @@ chrome.runtime.onInstalled.addListener((details) => {
   }
 });
 
-// Handle command (keyboard shortcut)
-chrome.commands.onCommand.addListener((command) => {
-  if (command === '_execute_action') {
-    // Open search in a command palette popup window
-    chrome.windows.create({
-      url: chrome.runtime.getURL('search-overlay.html'),
-      type: 'popup',
-      width: 600,
-      height: 500,
-    });
+// Open search in a command palette popup window, remembering which tab
+// triggered it so we can reuse it if it's a blank new tab (see OPEN_BOOKMARK).
+function openSearchOverlayWindow(originTab?: chrome.tabs.Tab) {
+  let url = chrome.runtime.getURL('search-overlay.html');
+  if (originTab?.id !== undefined) {
+    url += `?originTabId=${originTab.id}`;
   }
-});
 
-// Handle action button click
-chrome.action.onClicked.addListener(() => {
-  // Always open search in a command palette popup window
   chrome.windows.create({
-    url: chrome.runtime.getURL('search-overlay.html'),
+    url,
     type: 'popup',
     width: 600,
     height: 500,
   });
+}
+
+// Handle command (keyboard shortcut)
+chrome.commands.onCommand.addListener((command, tab) => {
+  if (command === '_execute_action') {
+    openSearchOverlayWindow(tab);
+  }
+});
+
+// Handle action button click
+chrome.action.onClicked.addListener((tab) => {
+  openSearchOverlayWindow(tab);
 });
 
 // Listen for messages from content scripts and settings pages
@@ -86,7 +90,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             }
           });
         } else {
-          chrome.tabs.create({ url: message.payload.url }, () => {
+          openUrlReusingBlankOriginTab(message.payload.url, message.payload?.originTabId, () => {
             sendResponse({ success: true });
           });
         }
@@ -126,6 +130,37 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // Return true to indicate we will send response asynchronously
   return true;
 });
+
+// Returns true if the tab is an empty/new tab page (safe to navigate away from
+// without losing anything the user cares about).
+function isBlankNewTab(tab: chrome.tabs.Tab): boolean {
+  const url = tab.url || tab.pendingUrl || '';
+  return url === 'chrome://newtab/' || url === 'about:blank' || url === '';
+}
+
+// Opens a URL in a new tab, unless originTabId points to a still-open blank
+// new tab, in which case that tab is reused instead of opening a new one.
+function openUrlReusingBlankOriginTab(url: string, originTabId: number | undefined, callback: () => void) {
+  if (originTabId === undefined) {
+    chrome.tabs.create({ url }, () => callback());
+    return;
+  }
+
+  chrome.tabs.get(originTabId, (originTab) => {
+    if (chrome.runtime.lastError || !originTab || !isBlankNewTab(originTab)) {
+      chrome.tabs.create({ url }, () => callback());
+      return;
+    }
+
+    chrome.tabs.update(originTabId, { url, active: true }, (tab) => {
+      if (tab?.windowId) {
+        chrome.windows.update(tab.windowId, { focused: true }, () => callback());
+      } else {
+        callback();
+      }
+    });
+  });
+}
 
 // Helper function to check if a bookmark path is within an excluded folder
 function isPathInFolder(bookmarkPath: string[], excludedPath: string[]): boolean {

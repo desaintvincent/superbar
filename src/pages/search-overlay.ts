@@ -27,6 +27,12 @@
     projectKeys: [],
   };
 
+  // Tab that was active when this popup was opened. If the user still hasn't
+  // navigated it away from a blank new tab by the time a result is opened, we
+  // reuse it instead of opening yet another tab.
+  const originTabIdParam = new URLSearchParams(window.location.search).get('originTabId');
+  const originTabId = originTabIdParam ? Number(originTabIdParam) : undefined;
+
   document.addEventListener('DOMContentLoaded', () => {
     console.log('====> dom init');
     const input = document.getElementById('superbar-input') as HTMLInputElement;
@@ -348,7 +354,7 @@
   function openBookmark(url: string, tabId?: number) {
     chrome.runtime.sendMessage({
       type: 'OPEN_BOOKMARK',
-      payload: { url, tabId },
+      payload: { url, tabId, originTabId },
     });
   }
 
