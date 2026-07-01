@@ -11,6 +11,7 @@
     path?: string;
     isOpenTab?: boolean;
     isHistory?: boolean;
+    isJiraTicket?: boolean;
     tabId?: number;
     windowId?: number;
   }
@@ -20,6 +21,10 @@
   let searchOptions = {
     includeTabs: true,
     includeHistory: false,
+  };
+  let jiraConfig: { baseUrl: string; projectKeys: string[] } = {
+    baseUrl: '',
+    projectKeys: [],
   };
 
   document.addEventListener('DOMContentLoaded', () => {
@@ -55,6 +60,14 @@
     }
 
     document.addEventListener('keydown', handleKeydown);
+
+    chrome.storage.local.get(['superbarConfig'], (result) => {
+      const config = result.superbarConfig || {};
+      jiraConfig = {
+        baseUrl: String(config.jiraBaseUrl || '').replace(/\/+$/, ''),
+        projectKeys: Array.isArray(config.jiraProjectKeys) ? config.jiraProjectKeys : [],
+      };
+    });
 
   });
 // @todo put back latter
@@ -139,11 +152,58 @@
     }
   }
 
+  function getJiraResults(query: string): BookmarkResult[] {
+    const trimmed = query.trim();
+    if (!jiraConfig.baseUrl || jiraConfig.projectKeys.length === 0) {
+      return [];
+    }
+
+    const toResult = (key: string, number: string): BookmarkResult => ({
+      title: `${key}-${number}`,
+      url: `${jiraConfig.baseUrl}/browse/${key}-${number}`,
+      relevance: 10000,
+      isJiraTicket: true,
+    });
+
+    // Case 1: plain ticket number (2+ digits), e.g. "283" -> one candidate per configured project
+    if (/^\d{2,6}$/.test(trimmed)) {
+      return jiraConfig.projectKeys.map((key) => toResult(key, trimmed));
+    }
+
+    // Case 2: letters + number (2+ digits), e.g. "OCS-283" / "OCS283" / "ocs 283" / "o283"
+    const match = trimmed.match(/^([A-Za-z]+)[-\s]?(\d{2,6})$/);
+    if (match) {
+      const prefix = match[1].toUpperCase();
+      const number = match[2];
+
+      // Exact project key match, e.g. "OCS283" -> OCS
+      const exactKey = jiraConfig.projectKeys.find((key) => key.toUpperCase() === prefix);
+      if (exactKey) {
+        return [toResult(exactKey, number)];
+      }
+
+      // Single-letter initial match, e.g. "o283" -> OCS, "s283" -> SYWA
+      // (one candidate per project sharing that initial, in case of a collision)
+      if (prefix.length === 1) {
+        const matchingKeys = jiraConfig.projectKeys.filter(
+          (key) => key.charAt(0).toUpperCase() === prefix
+        );
+        if (matchingKeys.length > 0) {
+          return matchingKeys.map((key) => toResult(key, number));
+        }
+      }
+    }
+
+    return [];
+  }
+
   function performSearch(query: string) {
     const resultsContainer = document.getElementById('superbar-results');
     if (!resultsContainer) return;
 
     resultsContainer.innerHTML = '<div class="superbar-loading">Searching...</div>';
+
+    const jiraResults = getJiraResults(query);
 
     chrome.runtime.sendMessage(
       {
@@ -151,7 +211,7 @@
         payload: { query, options: searchOptions },
       },
       (response) => {
-        currentResults = response?.results || [];
+        currentResults = [...jiraResults, ...(response?.results || [])];
         renderResults();
       }
     );
@@ -184,6 +244,8 @@
         const debugHtml = `<div class="superbar-result-debug" title="Weight: ${weight}, Relevance: ${relevance}">W:${weight}</div>`;
         const tabIndicatorHtml = result.isOpenTab ? `<div class="superbar-result-tab-indicator" title="Open tab">🔗</div>` : '';
         const historyIndicatorHtml = result.isHistory ? `<div class="superbar-result-history-indicator" title="History">⏱️</div>` : '';
+        const jiraIndicatorHtml = result.isJiraTicket ? `<div class="superbar-result-jira-indicator" title="Jira ticket">JIRA</div>` : '';
+        const showActions = !result.isOpenTab && !result.isHistory && !result.isJiraTicket;
         return `
           <div class="superbar-result ${isSelected ? 'selected' : ''}" data-index="${index}">
             <div class="superbar-result-content">
@@ -197,12 +259,13 @@
               ${debugHtml}
               ${tabIndicatorHtml}
               ${historyIndicatorHtml}
+              ${jiraIndicatorHtml}
               <div class="superbar-result-actions">
                 <button class="superbar-action-btn" data-index="${index}" title="More actions">⋮</button>
                 <div class="superbar-action-menu" data-index="${index}" style="display: none;">
-                  ${!result.isOpenTab && !result.isHistory ? `<button class="superbar-action-item" data-action="delete" data-index="${index}">🗑️ Delete</button>` : ''}
-                  ${!result.isOpenTab && !result.isHistory ? `<button class="superbar-action-item" data-action="ignore-folder" data-index="${index}">📁 Ignore Folder</button>` : ''}
-                  ${!result.isOpenTab && !result.isHistory ? `<button class="superbar-action-item" data-action="ignore-bookmark" data-index="${index}">🚫 Ignore Bookmark</button>` : ''}
+                  ${showActions ? `<button class="superbar-action-item" data-action="delete" data-index="${index}">🗑️ Delete</button>` : ''}
+                  ${showActions ? `<button class="superbar-action-item" data-action="ignore-folder" data-index="${index}">📁 Ignore Folder</button>` : ''}
+                  ${showActions ? `<button class="superbar-action-item" data-action="ignore-bookmark" data-index="${index}">🚫 Ignore Bookmark</button>` : ''}
                 </div>
               </div>
             </div>

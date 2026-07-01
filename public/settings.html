@@ -62,6 +62,28 @@
           <p class="help-text">List of bookmark URLs to exclude from search results (one per line)</p>
         </div>
 
+        <div class="form-group">
+          <label for="jira-base-url">Jira Base URL</label>
+          <input
+            type="text"
+            id="jira-base-url"
+            name="jiraBaseUrl"
+            placeholder="https://your-domain.atlassian.net"
+          />
+          <p class="help-text">Your Atlassian domain, no trailing slash</p>
+        </div>
+
+        <div class="form-group">
+          <label for="jira-project-keys">Jira Project Keys</label>
+          <textarea
+            id="jira-project-keys"
+            name="jiraProjectKeys"
+            placeholder="Enter project keys, one per line&#10;Example:&#10;OCS&#10;SYWA"
+            rows="4"
+          ></textarea>
+          <p class="help-text">Type just the ticket number in search (e.g. "283") to jump to it. Each configured project key that matches will show up as a result (e.g. OCS-283, SYWA-283). Order here controls display order.</p>
+        </div>
+
         <div class="form-actions">
           <button type="submit" class="btn btn-primary">Save Settings</button>
           <button type="button" id="reset-btn" class="btn btn-secondary">

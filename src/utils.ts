@@ -10,6 +10,8 @@ export interface SuperBarConfig {
   excludedFolders?: string[][];
   ignoredBookmarks?: string[];
   bookmarkUsage?: { [url: string]: number };
+  jiraBaseUrl?: string;
+  jiraProjectKeys?: string[];
 }
 
 export const DEFAULT_CONFIG: SuperBarConfig = {
@@ -20,6 +22,8 @@ export const DEFAULT_CONFIG: SuperBarConfig = {
   excludedFolders: [],
   ignoredBookmarks: [],
   bookmarkUsage: {},
+  jiraBaseUrl: '',
+  jiraProjectKeys: [],
 };
 
 export async function getConfig(): Promise<SuperBarConfig> {
